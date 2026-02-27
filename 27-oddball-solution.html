@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oddball Solution — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Oddball Solution</h1>
+<p class="aka">Also known as: Black Sheep</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A problem that is solved in two (or more) different ways within the same codebase. One module parses dates with <code>SimpleDateFormat</code>, another uses <code>DateTimeFormatter</code>, and a third uses a hand-rolled regex. One controller validates input with annotations, another uses an <code>if/else</code> chain, and a third calls a validation service. The solutions aren't wrong individually — they're inconsistent <em>collectively</em>.</p>
+
+<p>The inconsistency confuses developers ("which approach should I use for my new code?"), makes patterns harder to find ("I'll search for all date parsing — oh wait, there are three different patterns"), and multiplies the maintenance burden (three approaches to update if the date format changes).</p>
+
+<p>The "oddball" is the one that diverges from the established convention — the black sheep among white sheep. But sometimes there's no established convention at all, just multiple ad-hoc approaches.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="cmt">// Approach 1: parsing config values with a helper class</span>
+<span class="kw">public</span> <span class="kw">class</span> ConfigParser {
+    <span class="kw">public</span> <span class="kw">int</span> getTimeout() {
+        <span class="kw">return</span> <span class="type">Integer</span>.parseInt(properties.getProperty(<span class="str">&quot;timeout&quot;</span>, <span class="str">&quot;5000&quot;</span>));
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isDebugMode() {
+        <span class="kw">return</span> <span class="type">Boolean</span>.parseBoolean(properties.getProperty(<span class="str">&quot;debug&quot;</span>, <span class="str">&quot;false&quot;</span>));
+    }
+}
+
+<span class="cmt">// Approach 2: same problem, different class, inline parsing</span>
+<span class="kw">public</span> <span class="kw">class</span> NotificationSettings {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Properties</span> props;
+
+    <span class="kw">public</span> <span class="kw">int</span> getRetryLimit() {
+        <span class="type">String</span> val = props.getProperty(<span class="str">&quot;notification.retries&quot;</span>);
+        <span class="kw">if</span> (val == <span class="kw">null</span> || val.trim().isEmpty()) <span class="kw">return</span> 3;
+        <span class="kw">try</span> {
+            <span class="kw">return</span> <span class="type">Integer</span>.parseInt(val.trim());
+        } <span class="kw">catch</span> (NumberFormatException e) {
+            <span class="kw">return</span> 3;
+        }
+    }
+}
+
+<span class="cmt">// Approach 3: same problem, yet another approach with Optional</span>
+<span class="kw">public</span> <span class="kw">class</span> CacheConfig {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Properties</span> props;
+
+    <span class="kw">public</span> <span class="kw">int</span> getMaxEntries() {
+        <span class="kw">return</span> <span class="type">Optional</span>.ofNullable(props.getProperty(<span class="str">&quot;cache.max&quot;</span>))
+            .map(<span class="type">String</span>::trim)
+            .filter(s -&gt; !s.isEmpty())
+            .map(<span class="type">Integer</span>::parseInt)
+            .orElse(1000);
+    }
+}</code></pre>
+
+<p>Three classes, three approaches to "read an integer from a properties file with a default." One uses <code>getProperty</code> with a default string. Another manually handles null, empty, and parse errors. A third uses <code>Optional</code> chaining. None is wrong, but the inconsistency means three patterns to understand, three patterns to maintain, and no clear precedent for the next developer.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Consistency / DRY.</strong> When the same problem is solved differently in different places, the codebase lacks a single canonical approach. Developers waste time choosing between approaches, and the codebase drifts further apart over time. It's a form of duplication — not of code, but of <em>decisions</em>.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Unify into a consistent approach</h3>
+
+<p>Pick the best solution and standardize on it. Extract it into a shared utility or pattern that all callers use.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> ConfigUtils {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Properties</span> props;
+
+    <span class="kw">public</span> ConfigUtils(<span class="type">Properties</span> props) {
+        <span class="kw">this</span>.props = props;
+    }
+
+    <span class="kw">public</span> <span class="kw">int</span> getInt(<span class="type">String</span> key, <span class="kw">int</span> defaultValue) {
+        <span class="type">String</span> val = props.getProperty(key);
+        <span class="kw">if</span> (val == <span class="kw">null</span> || val.trim().isEmpty()) <span class="kw">return</span> defaultValue;
+        <span class="kw">try</span> {
+            <span class="kw">return</span> <span class="type">Integer</span>.parseInt(val.trim());
+        } <span class="kw">catch</span> (NumberFormatException e) {
+            <span class="kw">return</span> defaultValue;
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> getBoolean(<span class="type">String</span> key, <span class="kw">boolean</span> defaultValue) {
+        <span class="type">String</span> val = props.getProperty(key);
+        <span class="kw">if</span> (val == <span class="kw">null</span> || val.trim().isEmpty()) <span class="kw">return</span> defaultValue;
+        <span class="kw">return</span> <span class="type">Boolean</span>.parseBoolean(val.trim());
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getString(<span class="type">String</span> key, <span class="type">String</span> defaultValue) {
+        <span class="type">String</span> val = props.getProperty(key);
+        <span class="kw">if</span> (val == <span class="kw">null</span> || val.trim().isEmpty()) <span class="kw">return</span> defaultValue;
+        <span class="kw">return</span> val.trim();
+    }
+}</code></pre>
+
+<p>All three classes now use the same approach:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> ConfigParser {
+    <span class="kw">private</span> <span class="kw">final</span> ConfigUtils config;
+
+    <span class="kw">public</span> <span class="kw">int</span> getTimeout() { <span class="kw">return</span> config.getInt(<span class="str">&quot;timeout&quot;</span>, 5000); }
+    <span class="kw">public</span> <span class="kw">boolean</span> isDebugMode() { <span class="kw">return</span> config.getBoolean(<span class="str">&quot;debug&quot;</span>, <span class="kw">false</span>); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> NotificationSettings {
+    <span class="kw">private</span> <span class="kw">final</span> ConfigUtils config;
+
+    <span class="kw">public</span> <span class="kw">int</span> getRetryLimit() { <span class="kw">return</span> config.getInt(<span class="str">&quot;notification.retries&quot;</span>, 3); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> CacheConfig {
+    <span class="kw">private</span> <span class="kw">final</span> ConfigUtils config;
+
+    <span class="kw">public</span> <span class="kw">int</span> getMaxEntries() { <span class="kw">return</span> config.getInt(<span class="str">&quot;cache.max&quot;</span>, 1000); }
+}</code></pre>
+
+<p>One pattern. One utility. Every config read looks the same, behaves the same, and handles edge cases the same way. The next developer has a clear precedent to follow.</p>
+
+<h3>Substitute Algorithm</h3>
+
+<p>When one solution is clearly better than the others (more robust, more readable, better error handling), replace the inferior ones with the superior one. Don't compromise — pick the best and make it the standard.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

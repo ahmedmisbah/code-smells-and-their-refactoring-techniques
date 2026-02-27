@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parallel Inheritance Hierarchies — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Parallel Inheritance Hierarchies</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Every time you add a subclass to one hierarchy, you find yourself adding a matching subclass to another hierarchy. Create <code>ExpressShipping</code> and you also need <code>ExpressShippingCalculator</code>. Create <code>PdfReport</code> and you also need <code>PdfReportFormatter</code>. The two hierarchies grow in lockstep — they're parallel lines that must always stay in sync.</p>
+
+<p>This is actually a special case of Shotgun Surgery: adding one conceptual type forces edits in two (or more) places. But it's specific enough and common enough that Fowler calls it out by name. The parallel hierarchies are often connected by a naming convention — one hierarchy uses the prefix or suffix of the other — which is a telltale sign.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="cmt">// Hierarchy 1: the shapes</span>
+<span class="kw">public abstract class</span> <span class="type">Shape</span> {
+    <span class="kw">public abstract double</span> <span class="fn">area</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Circle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> radius;
+    <span class="kw">public</span> <span class="fn">Circle</span>(<span class="kw">double</span> radius) { <span class="kw">this</span>.radius = radius; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="type">Math</span>.PI * radius * radius; }
+    <span class="kw">public double</span> <span class="fn">getRadius</span>() { <span class="kw">return</span> radius; }
+}
+
+<span class="kw">public class</span> <span class="type">Rectangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> width, height;
+    <span class="kw">public</span> <span class="fn">Rectangle</span>(<span class="kw">double</span> w, <span class="kw">double</span> h) { <span class="kw">this</span>.width = w; <span class="kw">this</span>.height = h; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> width * height; }
+    <span class="kw">public double</span> <span class="fn">getWidth</span>() { <span class="kw">return</span> width; }
+    <span class="kw">public double</span> <span class="fn">getHeight</span>() { <span class="kw">return</span> height; }
+}
+
+<span class="kw">public class</span> <span class="type">Triangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> base, height;
+    <span class="kw">public</span> <span class="fn">Triangle</span>(<span class="kw">double</span> b, <span class="kw">double</span> h) { <span class="kw">this</span>.base = b; <span class="kw">this</span>.height = h; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="num">0.5</span> * base * height; }
+    <span class="kw">public double</span> <span class="fn">getBase</span>() { <span class="kw">return</span> base; }
+    <span class="kw">public double</span> <span class="fn">getHeight</span>() { <span class="kw">return</span> height; }
+}</code></pre>
+
+<pre><code><span class="cmt">// Hierarchy 2: the renderers — mirrors the shape hierarchy exactly</span>
+<span class="kw">public abstract class</span> <span class="type">ShapeRenderer</span> {
+    <span class="kw">public abstract void</span> <span class="fn">render</span>(<span class="type">Shape</span> shape);
+}
+
+<span class="kw">public class</span> <span class="type">CircleRenderer</span> <span class="kw">extends</span> <span class="type">ShapeRenderer</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>(<span class="type">Shape</span> shape) {
+        <span class="type">Circle</span> c = (<span class="type">Circle</span>) shape;
+        <span class="type">System</span>.out.println(<span class="str">"Drawing circle with radius "</span> + c.getRadius());
+    }
+}
+
+<span class="kw">public class</span> <span class="type">RectangleRenderer</span> <span class="kw">extends</span> <span class="type">ShapeRenderer</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>(<span class="type">Shape</span> shape) {
+        <span class="type">Rectangle</span> r = (<span class="type">Rectangle</span>) shape;
+        <span class="type">System</span>.out.println(<span class="str">"Drawing rect "</span> + r.getWidth() + <span class="str">"x"</span> + r.getHeight());
+    }
+}
+
+<span class="kw">public class</span> <span class="type">TriangleRenderer</span> <span class="kw">extends</span> <span class="type">ShapeRenderer</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>(<span class="type">Shape</span> shape) {
+        <span class="type">Triangle</span> t = (<span class="type">Triangle</span>) shape;
+        <span class="type">System</span>.out.println(<span class="str">"Drawing triangle base="</span> + t.getBase()
+                         + <span class="str">" h="</span> + t.getHeight());
+    }
+}</code></pre>
+
+<p>Three shapes, three renderers. Add a <code>Pentagon</code> and you must add a <code>PentagonRenderer</code>. Forget the renderer and the system crashes with a <code>ClassCastException</code> at runtime — there's nothing at compile time that enforces the pairing.</p>
+
+<p>The same pattern appears with serializers, validators, factory methods, and test doubles — any parallel hierarchy that must stay in sync.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>DRY and cohesion.</strong> The knowledge of "how to handle a specific shape" is split across two hierarchies. The concept of a circle lives partly in <code>Circle</code> and partly in <code>CircleRenderer</code>. Neither class tells the whole story, and they must be kept in sync manually.</p>
+
+<p>It also creates <strong>fragile coupling</strong>: the renderer hierarchy depends on the exact structure of the shape hierarchy, typically through downcasts (<code>(Circle) shape</code>), which are unsafe and break when the hierarchies drift apart.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Collapse the hierarchy — move rendering into the shape</h3>
+
+<p>If each renderer only serves one shape, the simplest fix is to move the rendering logic into the shape itself:</p>
+
+<pre><code><span class="kw">public abstract class</span> <span class="type">Shape</span> {
+    <span class="kw">public abstract double</span> <span class="fn">area</span>();
+    <span class="kw">public abstract void</span> <span class="fn">render</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Circle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> radius;
+
+    <span class="kw">public</span> <span class="fn">Circle</span>(<span class="kw">double</span> radius) { <span class="kw">this</span>.radius = radius; }
+
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="type">Math</span>.PI * radius * radius; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>() {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing circle with radius "</span> + radius);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Rectangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> width, height;
+
+    <span class="kw">public</span> <span class="fn">Rectangle</span>(<span class="kw">double</span> w, <span class="kw">double</span> h) { <span class="kw">this</span>.width = w; <span class="kw">this</span>.height = h; }
+
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> width * height; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>() {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing rect "</span> + width + <span class="str">"x"</span> + height);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Triangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> base, height;
+
+    <span class="kw">public</span> <span class="fn">Triangle</span>(<span class="kw">double</span> b, <span class="kw">double</span> h) { <span class="kw">this</span>.base = b; <span class="kw">this</span>.height = h; }
+
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="num">0.5</span> * base * height; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">render</span>() {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing triangle base="</span> + base + <span class="str">" h="</span> + height);
+    }
+}</code></pre>
+
+<p>The renderer hierarchy disappears entirely. Add a <code>Pentagon</code> and you add one class with one <code>render()</code> method.</p>
+
+<hr>
+
+<h3>Visitor pattern — when collapsing isn't appropriate</h3>
+
+<p>Sometimes you can't or shouldn't put rendering inside the shape — perhaps shapes are a domain model that shouldn't know about presentation, or there are multiple rendering strategies (SVG, Canvas, PDF). The Visitor pattern lets you add operations without a parallel hierarchy:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">ShapeVisitor</span>&lt;<span class="type">T</span>&gt; {
+    <span class="type">T</span> <span class="fn">visitCircle</span>(<span class="type">Circle</span> circle);
+    <span class="type">T</span> <span class="fn">visitRectangle</span>(<span class="type">Rectangle</span> rectangle);
+    <span class="type">T</span> <span class="fn">visitTriangle</span>(<span class="type">Triangle</span> triangle);
+}
+
+<span class="kw">public abstract class</span> <span class="type">Shape</span> {
+    <span class="kw">public abstract double</span> <span class="fn">area</span>();
+    <span class="kw">public abstract</span> &lt;<span class="type">T</span>&gt; <span class="type">T</span> <span class="fn">accept</span>(<span class="type">ShapeVisitor</span>&lt;<span class="type">T</span>&gt; visitor);
+}
+
+<span class="kw">public class</span> <span class="type">Circle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> radius;
+
+    <span class="kw">public</span> <span class="fn">Circle</span>(<span class="kw">double</span> radius) { <span class="kw">this</span>.radius = radius; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="type">Math</span>.PI * radius * radius; }
+    <span class="kw">public double</span> <span class="fn">getRadius</span>() { <span class="kw">return</span> radius; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> &lt;<span class="type">T</span>&gt; <span class="type">T</span> <span class="fn">accept</span>(<span class="type">ShapeVisitor</span>&lt;<span class="type">T</span>&gt; visitor) {
+        <span class="kw">return</span> visitor.visitCircle(<span class="kw">this</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Rectangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> width, height;
+
+    <span class="kw">public</span> <span class="fn">Rectangle</span>(<span class="kw">double</span> w, <span class="kw">double</span> h) { <span class="kw">this</span>.width = w; <span class="kw">this</span>.height = h; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> width * height; }
+    <span class="kw">public double</span> <span class="fn">getWidth</span>() { <span class="kw">return</span> width; }
+    <span class="kw">public double</span> <span class="fn">getHeight</span>() { <span class="kw">return</span> height; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> &lt;<span class="type">T</span>&gt; <span class="type">T</span> <span class="fn">accept</span>(<span class="type">ShapeVisitor</span>&lt;<span class="type">T</span>&gt; visitor) {
+        <span class="kw">return</span> visitor.visitRectangle(<span class="kw">this</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Triangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> base, height;
+
+    <span class="kw">public</span> <span class="fn">Triangle</span>(<span class="kw">double</span> b, <span class="kw">double</span> h) { <span class="kw">this</span>.base = b; <span class="kw">this</span>.height = h; }
+    <span class="kw">public double</span> <span class="fn">area</span>() { <span class="kw">return</span> <span class="num">0.5</span> * base * height; }
+    <span class="kw">public double</span> <span class="fn">getBase</span>() { <span class="kw">return</span> base; }
+    <span class="kw">public double</span> <span class="fn">getHeight</span>() { <span class="kw">return</span> height; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> &lt;<span class="type">T</span>&gt; <span class="type">T</span> <span class="fn">accept</span>(<span class="type">ShapeVisitor</span>&lt;<span class="type">T</span>&gt; visitor) {
+        <span class="kw">return</span> visitor.visitTriangle(<span class="kw">this</span>);
+    }
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">ConsoleRenderer</span> <span class="kw">implements</span> <span class="type">ShapeVisitor</span>&lt;<span class="type">Void</span>&gt; {
+    <span class="kw">public</span> <span class="type">Void</span> <span class="fn">visitCircle</span>(<span class="type">Circle</span> c) {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing circle r="</span> + c.getRadius());
+        <span class="kw">return null</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">Void</span> <span class="fn">visitRectangle</span>(<span class="type">Rectangle</span> r) {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing rect "</span> + r.getWidth() + <span class="str">"x"</span> + r.getHeight());
+        <span class="kw">return null</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">Void</span> <span class="fn">visitTriangle</span>(<span class="type">Triangle</span> t) {
+        <span class="type">System</span>.out.println(<span class="str">"Drawing triangle b="</span> + t.getBase() + <span class="str">" h="</span> + t.getHeight());
+        <span class="kw">return null</span>;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">SvgExporter</span> <span class="kw">implements</span> <span class="type">ShapeVisitor</span>&lt;<span class="type">String</span>&gt; {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">visitCircle</span>(<span class="type">Circle</span> c) {
+        <span class="kw">return</span> <span class="str">"&lt;circle r=\""</span> + c.getRadius() + <span class="str">"\"/&gt;"</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">visitRectangle</span>(<span class="type">Rectangle</span> r) {
+        <span class="kw">return</span> <span class="str">"&lt;rect width=\""</span> + r.getWidth() + <span class="str">"\" height=\""</span> + r.getHeight() + <span class="str">"\"/&gt;"</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">visitTriangle</span>(<span class="type">Triangle</span> t) {
+        <span class="kw">return</span> <span class="str">"&lt;polygon points=\"...\"/&gt;"</span>;
+    }
+}</code></pre>
+
+<p>The parallel hierarchy is gone. Adding a new <em>operation</em> (like <code>SvgExporter</code>) means one new class. The trade-off: adding a new <em>shape</em> requires updating every visitor — but the compiler enforces this (you must implement the new <code>visit</code> method), so you can't silently forget it.</p>
+
+<hr>
+
+<h3>Bridge pattern — when both hierarchies need to grow</h3>
+
+<p>If both dimensions genuinely need independent extensibility (shapes grow <em>and</em> renderers grow), use the Bridge pattern to decouple them — as covered in the Combinatorial Explosion smell. The key insight is the same: separate the two axes of variation so they don't multiply.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

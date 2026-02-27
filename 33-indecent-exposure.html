@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indecent Exposure — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Indecent Exposure</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Classes, methods, or fields that are more visible than they need to be — <code>public</code> when they should be <code>package-private</code>, <code>protected</code> when they should be <code>private</code>, or exposed as API when they're implementation details. The code exposes its internals to every class in the system when only a handful of classes (or none) actually need access.</p>
+
+<p>Every public element is a promise: "you can depend on this, and I won't break it." Indecent exposure makes promises the class never intended to keep. Other classes start depending on internal helpers, factory methods meant for one specific caller, or data structures that were supposed to be hidden. Now you can't refactor without breaking dependents you never knew existed.</p>
+
+<p>Kerievsky identifies this as a particular concern with public constructors — making a constructor public when creation should be controlled through a factory or builder exposes construction details that should be hidden.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> ReportEngine {
+
+    <span class="cmt">// should be private — only used internally</span>
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">String</span>&gt; rawData;
+
+    <span class="cmt">// should be private — internal helper</span>
+    <span class="kw">public</span> <span class="type">String</span> sanitize(<span class="type">String</span> input) {
+        <span class="kw">return</span> input.replaceAll(<span class="str">&quot;[^a-zA-Z0-9 ]&quot;</span>, <span class="str">&quot;&quot;</span>);
+    }
+
+    <span class="cmt">// should be private — intermediate step</span>
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">String</span>[]&gt; parseRows(<span class="type">List</span>&lt;<span class="type">String</span>&gt; lines) {
+        <span class="kw">return</span> lines.stream()
+            .map(line -&gt; line.split(<span class="str">&quot;,&quot;</span>))
+            .collect(<span class="type">Collectors</span>.toList());
+    }
+
+    <span class="cmt">// should be private — formatting detail</span>
+    <span class="kw">public</span> <span class="type">String</span> formatCell(<span class="type">String</span> value, <span class="kw">int</span> width) {
+        <span class="kw">return</span> <span class="type">String</span>.format(<span class="str">&quot;%-&quot;</span> + width + <span class="str">&quot;s&quot;</span>, value);
+    }
+
+    <span class="cmt">// the actual public API</span>
+    <span class="kw">public</span> <span class="type">String</span> generateReport(<span class="type">List</span>&lt;<span class="type">String</span>&gt; data) {
+        <span class="kw">this</span>.rawData = data;
+        <span class="type">List</span>&lt;<span class="type">String</span>&gt; cleaned = data.stream()
+            .map(<span class="kw">this</span>::sanitize)
+            .collect(<span class="type">Collectors</span>.toList());
+        <span class="type">List</span>&lt;<span class="type">String</span>[]&gt; rows = parseRows(cleaned);
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        <span class="kw">for</span> (<span class="type">String</span>[] row : rows) {
+            <span class="kw">for</span> (<span class="type">String</span> cell : row) {
+                sb.append(formatCell(cell, 20));
+            }
+            sb.append(<span class="str">&quot;\n&quot;</span>);
+        }
+        <span class="kw">return</span> sb.toString();
+    }
+}</code></pre>
+
+<p><code>sanitize</code>, <code>parseRows</code>, <code>formatCell</code>, and <code>rawData</code> are all <code>public</code>, but they're implementation details of <code>generateReport</code>. Other classes start calling <code>sanitize</code> for their own purposes. Someone reads <code>rawData</code> directly. Now <code>ReportEngine</code> can't change its parsing strategy, rename its helpers, or remove <code>rawData</code> without a system-wide impact study.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Information Hiding / Minimum Visibility.</strong> Every element should have the narrowest visibility that allows it to do its job. Public elements are part of the contract; private elements are free to change. Exposing more than necessary turns implementation details into accidental contracts.</p>
+
+<p>It also violates <strong>encapsulation</strong> in the classical sense: the object's internal state and helper methods are visible and accessible to anyone.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Restrict visibility — make things as private as possible</h3>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> ReportEngine {
+
+    <span class="cmt">// only the public API remains public</span>
+
+    <span class="kw">public</span> <span class="type">String</span> generateReport(<span class="type">List</span>&lt;<span class="type">String</span>&gt; data) {
+        <span class="type">List</span>&lt;<span class="type">String</span>&gt; cleaned = data.stream()
+            .map(<span class="kw">this</span>::sanitize)
+            .collect(<span class="type">Collectors</span>.toList());
+        <span class="type">List</span>&lt;<span class="type">String</span>[]&gt; rows = parseRows(cleaned);
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        <span class="kw">for</span> (<span class="type">String</span>[] row : rows) {
+            <span class="kw">for</span> (<span class="type">String</span> cell : row) {
+                sb.append(formatCell(cell, 20));
+            }
+            sb.append(<span class="str">&quot;\n&quot;</span>);
+        }
+        <span class="kw">return</span> sb.toString();
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> sanitize(<span class="type">String</span> input) {
+        <span class="kw">return</span> input.replaceAll(<span class="str">&quot;[^a-zA-Z0-9 ]&quot;</span>, <span class="str">&quot;&quot;</span>);
+    }
+
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">String</span>[]&gt; parseRows(<span class="type">List</span>&lt;<span class="type">String</span>&gt; lines) {
+        <span class="kw">return</span> lines.stream()
+            .map(line -&gt; line.split(<span class="str">&quot;,&quot;</span>))
+            .collect(<span class="type">Collectors</span>.toList());
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> formatCell(<span class="type">String</span> value, <span class="kw">int</span> width) {
+        <span class="kw">return</span> <span class="type">String</span>.format(<span class="str">&quot;%-&quot;</span> + width + <span class="str">&quot;s&quot;</span>, value);
+    }
+}</code></pre>
+
+<p><code>rawData</code> is gone — it was only needed as a temporary variable, so it becomes a local in <code>generateReport</code> (or disappears). The three helper methods are <code>private</code>. The class now has one public method — that's its contract. Everything else can change freely.</p>
+
+<hr>
+
+<h3>Encapsulate Construction — hide constructors behind factory methods</h3>
+
+<p>When construction should be controlled:</p>
+
+<p class="before-after"><strong>Before</strong> — public constructor exposes creation details:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> DatabaseConnection {
+    <span class="kw">public</span> DatabaseConnection(<span class="type">String</span> url, <span class="type">String</span> user, <span class="type">String</span> password,
+                               <span class="kw">int</span> poolSize, <span class="kw">int</span> timeout, <span class="kw">boolean</span> ssl) {
+        <span class="cmt">// ...</span>
+    }
+}</code></pre>
+
+<p class="before-after"><strong>After</strong> — private constructor, public factory:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> DatabaseConnection {
+    <span class="kw">private</span> DatabaseConnection(<span class="type">String</span> url, <span class="type">String</span> user, <span class="type">String</span> password,
+                                <span class="kw">int</span> poolSize, <span class="kw">int</span> timeout, <span class="kw">boolean</span> ssl) {
+        <span class="cmt">// ...</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> DatabaseConnection createDefault() {
+        <span class="kw">return</span> <span class="kw">new</span> DatabaseConnection(
+            <span class="type">Config</span>.getDbUrl(), <span class="type">Config</span>.getDbUser(), <span class="type">Config</span>.getDbPassword(),
+            10, 5000, <span class="kw">true</span>);
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> DatabaseConnection createForTesting() {
+        <span class="kw">return</span> <span class="kw">new</span> DatabaseConnection(<span class="str">&quot;jdbc:h2:mem:test&quot;</span>, <span class="str">&quot;sa&quot;</span>, <span class="str">&quot;&quot;</span>, 2, 1000, <span class="kw">false</span>);
+    }
+}</code></pre>
+
+<p>Callers can't construct a connection with arbitrary parameters. The factory methods control what's possible, and the constructor's parameter list is hidden.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

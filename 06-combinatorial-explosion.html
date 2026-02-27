@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combinatorial Explosion — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0f2e;
+    color: #d4daf0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.6rem;
+  }
+
+  h2 {
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.4rem;
+  }
+
+  h3 {
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  h4 {
+    color: #FFFFFF;
+    font-size: 1.1rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    margin-bottom: 1rem;
+  }
+
+  .aka {
+    color: #9ba3c2;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  strong {
+    color: #FFFFFF;
+  }
+
+  em {
+    color: #d4a0ff;
+    font-style: italic;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #1e2a5e;
+    margin: 2rem 0;
+  }
+
+  pre {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin-bottom: 1.2rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+  }
+
+  pre code {
+    color: #d4daf0;
+  }
+
+  p code, li code {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    color: #c77dff;
+  }
+
+  .kw { color: #c77dff; }
+  .type { color: #6b9fff; }
+  .str { color: #a8c8ff; }
+  .num { color: #6b9fff; }
+  .cmt { color: #9ba3c2; font-style: italic; }
+  .fn { color: #d4a0ff; }
+  .ann { color: #e0b0ff; }
+  .label { color: #FFFFFF; font-weight: bold; }
+
+  .before-after {
+    color: #c77dff;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  .note {
+    background: #111842;
+    border-left: 4px solid #6b9fff;
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0;
+    border-radius: 0 6px 6px 0;
+    color: #9ba3c2;
+  }
+
+  .note strong { color: #6b9fff; }
+
+  .logo-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #1e2a5e;
+  }
+
+  .logo-header img {
+    max-width: 180px;
+    height: auto;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #6b9fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #1e2a5e;
+    text-align: center;
+    color: #7880a0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  footer img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Combinatorial Explosion</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A design where the number of methods, classes, or code paths multiplies every time a new variant is added. Instead of composing independent dimensions of behavior, the code enumerates every possible combination explicitly. Add one new option and you don't write one new piece of code — you write one for every existing variant it can combine with. The growth is multiplicative, not additive.</p>
+
+<p>This smell is most visible when you see method names or class names that encode two or more independent choices: <code>exportPdfColor</code>, <code>exportPdfGrayscale</code>, <code>exportCsvColor</code>, <code>exportCsvGrayscale</code>. Two formats times two color modes gives four methods. Add a third format and you write two more. Add a third color mode and you jump from six to nine. The combinatorial math is merciless.</p>
+
+<p>Kerievsky highlights this smell specifically as a case where design patterns — particularly <strong>Interpreter</strong>, <strong>Strategy</strong>, and <strong>Decorator</strong> — can collapse the explosion back to a manageable, additive structure.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">NotificationService</span> {
+
+    <span class="cmt">// Channel × Urgency × Format = 2 × 3 × 2 = 12 methods</span>
+
+    <span class="kw">public void</span> <span class="fn">sendEmailNormalText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text email, normal priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendEmailNormalHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML email, normal priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendEmailUrgentText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text email, urgent priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendEmailUrgentHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML email, urgent priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendEmailCriticalText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text email, critical priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendEmailCriticalHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML email, critical priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsNormalText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text SMS, normal priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsNormalHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML SMS, normal priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsUrgentText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text SMS, urgent priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsUrgentHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML SMS, urgent priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsCriticalText</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// plain text SMS, critical priority</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">sendSmsCriticalHtml</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="cmt">// HTML SMS, critical priority</span>
+    }
+}</code></pre>
+
+<p>Twelve methods for three independent choices. Now imagine adding a push notification channel — you write six more methods. Add a "low" urgency level — every channel and format gets another method. Add a Markdown format — every channel and urgency gets another method. The class is already unmanageable and every new feature makes it worse at a multiplicative rate.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Open/Closed Principle (OCP).</strong> The system should be open for extension but closed for modification. Here, adding one variant along <em>any</em> dimension requires modifying the class and adding methods for every combination with every other dimension. Nothing is independently extensible.</p>
+
+<p>It also violates <strong>separation of concerns</strong>: the concepts of channel, urgency, and format are independent axes, but the code welds them into a single monolithic structure where they can't vary independently.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The core idea is to separate each dimension of variation into its own abstraction, then compose them at runtime. Instead of enumerating every combination, you let each axis vary independently.</p>
+
+<h3>Strategy Pattern — one strategy per dimension</h3>
+
+<p>Extract each independent choice into its own interface.</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">Channel</span> {
+    <span class="kw">void</span> <span class="fn">deliver</span>(<span class="type">String</span> recipient, <span class="type">String</span> content, <span class="type">Priority</span> priority);
+}
+
+<span class="kw">public class</span> <span class="type">EmailChannel</span> <span class="kw">implements</span> <span class="type">Channel</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">deliver</span>(<span class="type">String</span> recipient, <span class="type">String</span> content, <span class="type">Priority</span> priority) {
+        <span class="cmt">// configure email-specific headers, connection, etc.</span>
+        <span class="cmt">// send the content to the recipient</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">SmsChannel</span> <span class="kw">implements</span> <span class="type">Channel</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">deliver</span>(<span class="type">String</span> recipient, <span class="type">String</span> content, <span class="type">Priority</span> priority) {
+        <span class="cmt">// configure SMS gateway, character limits, etc.</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PushChannel</span> <span class="kw">implements</span> <span class="type">Channel</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">deliver</span>(<span class="type">String</span> recipient, <span class="type">String</span> content, <span class="type">Priority</span> priority) {
+        <span class="cmt">// configure push notification payload</span>
+    }
+}</code></pre>
+
+<pre><code><span class="kw">public interface</span> <span class="type">MessageFormatter</span> {
+    <span class="type">String</span> <span class="fn">format</span>(<span class="type">String</span> rawMessage);
+}
+
+<span class="kw">public class</span> <span class="type">PlainTextFormatter</span> <span class="kw">implements</span> <span class="type">MessageFormatter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="type">String</span> rawMessage) {
+        <span class="kw">return</span> rawMessage;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">HtmlFormatter</span> <span class="kw">implements</span> <span class="type">MessageFormatter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="type">String</span> rawMessage) {
+        <span class="kw">return</span> <span class="str">"&lt;html&gt;&lt;body&gt;&lt;p&gt;"</span> + <span class="fn">escapeHtml</span>(rawMessage) + <span class="str">"&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"</span>;
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> <span class="fn">escapeHtml</span>(<span class="type">String</span> text) { <span class="cmt">/* ... */</span> <span class="kw">return</span> text; }
+}
+
+<span class="kw">public class</span> <span class="type">MarkdownFormatter</span> <span class="kw">implements</span> <span class="type">MessageFormatter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="type">String</span> rawMessage) {
+        <span class="cmt">// convert markdown to target format</span>
+        <span class="kw">return</span> rawMessage;
+    }
+}</code></pre>
+
+<pre><code><span class="kw">public enum</span> <span class="type">Priority</span> {
+    LOW, NORMAL, URGENT, CRITICAL
+}</code></pre>
+
+<p>Now the notification service composes them:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">NotificationService</span> {
+    <span class="kw">private final</span> <span class="type">Channel</span> channel;
+    <span class="kw">private final</span> <span class="type">MessageFormatter</span> formatter;
+
+    <span class="kw">public</span> <span class="fn">NotificationService</span>(<span class="type">Channel</span> channel, <span class="type">MessageFormatter</span> formatter) {
+        <span class="kw">this</span>.channel = channel;
+        <span class="kw">this</span>.formatter = formatter;
+    }
+
+    <span class="kw">public void</span> <span class="fn">send</span>(<span class="type">User</span> user, <span class="type">String</span> message, <span class="type">Priority</span> priority) {
+        <span class="type">String</span> formatted = formatter.format(message);
+        channel.deliver(user.getContactInfo(), formatted, priority);
+    }
+}</code></pre>
+
+<p>Adding a new channel means writing one class. Adding a new format means writing one class. Adding a new priority level means adding one enum constant. Growth is additive: 2 channels + 3 priorities + 2 formats = <strong>7 units of code</strong>, not 2 × 3 × 2 = 12.</p>
+
+<hr>
+
+<h3>Decorator Pattern — layering behaviors without multiplication</h3>
+
+<p>When the combinatorial explosion comes from stacking optional behaviors (logging, retry, encryption, compression), Decorator collapses the combinations.</p>
+
+<p class="before-after">Before — explicit combinations of optional features:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">DataExporter</span> {
+    <span class="kw">public void</span> <span class="fn">export</span>(<span class="type">Data</span> data) { <span class="cmt">/* basic export */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithLogging</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + log */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithEncryption</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + encrypt */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithLoggingAndEncryption</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + log + encrypt */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithCompression</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + compress */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithLoggingAndCompression</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + log + compress */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithEncryptionAndCompression</span>(<span class="type">Data</span> data) { <span class="cmt">/* export + encrypt + compress */</span> }
+    <span class="kw">public void</span> <span class="fn">exportWithLoggingAndEncryptionAndCompression</span>(<span class="type">Data</span> data) { <span class="cmt">/* all three */</span> }
+    <span class="cmt">// 2^3 = 8 methods for 3 optional features. A 4th feature doubles it to 16.</span>
+}</code></pre>
+
+<p class="before-after">After — decorators that wrap each other:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">Exporter</span> {
+    <span class="kw">void</span> <span class="fn">export</span>(<span class="type">Data</span> data);
+}
+
+<span class="kw">public class</span> <span class="type">BasicExporter</span> <span class="kw">implements</span> <span class="type">Exporter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">export</span>(<span class="type">Data</span> data) {
+        <span class="cmt">// core export logic</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">LoggingExporter</span> <span class="kw">implements</span> <span class="type">Exporter</span> {
+    <span class="kw">private final</span> <span class="type">Exporter</span> wrapped;
+
+    <span class="kw">public</span> <span class="fn">LoggingExporter</span>(<span class="type">Exporter</span> wrapped) {
+        <span class="kw">this</span>.wrapped = wrapped;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">export</span>(<span class="type">Data</span> data) {
+        <span class="type">System</span>.out.println(<span class="str">"Exporting: "</span> + data.getName());
+        wrapped.export(data);
+        <span class="type">System</span>.out.println(<span class="str">"Export complete."</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">EncryptingExporter</span> <span class="kw">implements</span> <span class="type">Exporter</span> {
+    <span class="kw">private final</span> <span class="type">Exporter</span> wrapped;
+
+    <span class="kw">public</span> <span class="fn">EncryptingExporter</span>(<span class="type">Exporter</span> wrapped) {
+        <span class="kw">this</span>.wrapped = wrapped;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">export</span>(<span class="type">Data</span> data) {
+        <span class="type">Data</span> encrypted = <span class="fn">encrypt</span>(data);
+        wrapped.export(encrypted);
+    }
+
+    <span class="kw">private</span> <span class="type">Data</span> <span class="fn">encrypt</span>(<span class="type">Data</span> data) { <span class="cmt">/* ... */</span> <span class="kw">return</span> data; }
+}
+
+<span class="kw">public class</span> <span class="type">CompressingExporter</span> <span class="kw">implements</span> <span class="type">Exporter</span> {
+    <span class="kw">private final</span> <span class="type">Exporter</span> wrapped;
+
+    <span class="kw">public</span> <span class="fn">CompressingExporter</span>(<span class="type">Exporter</span> wrapped) {
+        <span class="kw">this</span>.wrapped = wrapped;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">export</span>(<span class="type">Data</span> data) {
+        <span class="type">Data</span> compressed = <span class="fn">compress</span>(data);
+        wrapped.export(compressed);
+    }
+
+    <span class="kw">private</span> <span class="type">Data</span> <span class="fn">compress</span>(<span class="type">Data</span> data) { <span class="cmt">/* ... */</span> <span class="kw">return</span> data; }
+}</code></pre>
+
+<p>Composing any combination at runtime:</p>
+
+<pre><code><span class="cmt">// basic export</span>
+<span class="type">Exporter</span> exporter = <span class="kw">new</span> <span class="type">BasicExporter</span>();
+
+<span class="cmt">// with logging</span>
+<span class="type">Exporter</span> exporter = <span class="kw">new</span> <span class="type">LoggingExporter</span>(<span class="kw">new</span> <span class="type">BasicExporter</span>());
+
+<span class="cmt">// with logging + encryption</span>
+<span class="type">Exporter</span> exporter = <span class="kw">new</span> <span class="type">LoggingExporter</span>(<span class="kw">new</span> <span class="type">EncryptingExporter</span>(<span class="kw">new</span> <span class="type">BasicExporter</span>()));
+
+<span class="cmt">// with all three</span>
+<span class="type">Exporter</span> exporter = <span class="kw">new</span> <span class="type">LoggingExporter</span>(
+    <span class="kw">new</span> <span class="type">EncryptingExporter</span>(
+        <span class="kw">new</span> <span class="type">CompressingExporter</span>(<span class="kw">new</span> <span class="type">BasicExporter</span>())));</code></pre>
+
+<p>Three optional features need 3 decorator classes + 1 base class = <strong>4 classes</strong> that can produce all 8 combinations (and any future combination with a 4th or 5th decorator). The exponential explosion becomes linear.</p>
+
+<hr>
+
+<h3>Bridge Pattern — separating two hierarchies</h3>
+
+<p>When two class hierarchies (abstraction and implementation) cross-multiply, Bridge decouples them.</p>
+
+<p class="before-after">Before — shape × rendering combinations explode into subclasses:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">CircleSvgRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">CircleCanvasRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">CirclePdfRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">RectangleSvgRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">RectangleCanvasRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">RectanglePdfRenderer</span> { <span class="cmt">/* ... */</span> }
+<span class="cmt">// 2 shapes × 3 renderers = 6 classes. Adding Triangle means 3 more.</span></code></pre>
+
+<p class="before-after">After — shape and renderer vary independently:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">Renderer</span> {
+    <span class="kw">void</span> <span class="fn">drawCircle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> radius);
+    <span class="kw">void</span> <span class="fn">drawRectangle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> width, <span class="kw">double</span> height);
+}
+
+<span class="kw">public class</span> <span class="type">SvgRenderer</span> <span class="kw">implements</span> <span class="type">Renderer</span> {
+    <span class="kw">public void</span> <span class="fn">drawCircle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> radius) { <span class="cmt">/* SVG circle */</span> }
+    <span class="kw">public void</span> <span class="fn">drawRectangle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> w, <span class="kw">double</span> h) { <span class="cmt">/* SVG rect */</span> }
+}
+
+<span class="kw">public class</span> <span class="type">CanvasRenderer</span> <span class="kw">implements</span> <span class="type">Renderer</span> {
+    <span class="kw">public void</span> <span class="fn">drawCircle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> radius) { <span class="cmt">/* Canvas arc */</span> }
+    <span class="kw">public void</span> <span class="fn">drawRectangle</span>(<span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> w, <span class="kw">double</span> h) { <span class="cmt">/* Canvas rect */</span> }
+}
+
+<span class="kw">public abstract class</span> <span class="type">Shape</span> {
+    <span class="kw">protected final</span> <span class="type">Renderer</span> renderer;
+
+    <span class="kw">public</span> <span class="fn">Shape</span>(<span class="type">Renderer</span> renderer) {
+        <span class="kw">this</span>.renderer = renderer;
+    }
+
+    <span class="kw">public abstract void</span> <span class="fn">draw</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Circle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> x, y, radius;
+
+    <span class="kw">public</span> <span class="fn">Circle</span>(<span class="type">Renderer</span> renderer, <span class="kw">double</span> x, <span class="kw">double</span> y, <span class="kw">double</span> radius) {
+        <span class="kw">super</span>(renderer);
+        <span class="kw">this</span>.x = x; <span class="kw">this</span>.y = y; <span class="kw">this</span>.radius = radius;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">draw</span>() {
+        renderer.drawCircle(x, y, radius);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Rectangle</span> <span class="kw">extends</span> <span class="type">Shape</span> {
+    <span class="kw">private double</span> x, y, width, height;
+
+    <span class="kw">public</span> <span class="fn">Rectangle</span>(<span class="type">Renderer</span> renderer, <span class="kw">double</span> x, <span class="kw">double</span> y,
+                      <span class="kw">double</span> width, <span class="kw">double</span> height) {
+        <span class="kw">super</span>(renderer);
+        <span class="kw">this</span>.x = x; <span class="kw">this</span>.y = y; <span class="kw">this</span>.width = width; <span class="kw">this</span>.height = height;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">draw</span>() {
+        renderer.drawRectangle(x, y, width, height);
+    }
+}</code></pre>
+
+<p>Two shapes + three renderers = <strong>5 classes</strong> instead of 6. More importantly, adding a <code>Triangle</code> means writing one class, not three. Adding a <code>PdfRenderer</code> means writing one class, not one per shape. The two dimensions scale independently.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

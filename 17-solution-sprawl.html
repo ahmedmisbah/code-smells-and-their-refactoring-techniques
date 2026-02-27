@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solution Sprawl — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Solution Sprawl</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>The code that implements one cohesive solution — one feature, one capability, one design decision — is spread thinly across many classes, with no single place you can point to and say "this is how we do X." To understand the solution, you have to trace through a chain of classes, piecing together fragments. To change the solution, you have to find and update every fragment.</p>
+
+<p>Solution Sprawl is close to Shotgun Surgery, but the emphasis is different. Shotgun Surgery is felt when you <em>change</em> something and discover you need to edit many files. Solution Sprawl is felt when you <em>read</em> the code and can't find the solution — it's nowhere and everywhere at once. Shotgun Surgery is the pain of modification; Solution Sprawl is the pain of comprehension.</p>
+
+<p>Kerievsky identifies this specifically as a pattern where creational logic — how objects are constructed, configured, and wired together — gets smeared across multiple classes instead of being concentrated in one factory or builder.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<p>Suppose the system needs to create a database connection with specific configuration. The logic is sprawled across four classes:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AppConfig</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getDbUrl</span>() {
+        <span class="kw">return</span> <span class="type">System</span>.getenv(<span class="str">"DB_URL"</span>);   <span class="cmt">// piece 1: reads the URL</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">ConnectionProperties</span> {
+    <span class="kw">public</span> <span class="type">Properties</span> <span class="fn">buildProperties</span>() {
+        <span class="type">Properties</span> props = <span class="kw">new</span> <span class="type">Properties</span>();
+        props.put(<span class="str">"user"</span>, <span class="type">System</span>.getenv(<span class="str">"DB_USER"</span>));        <span class="cmt">// piece 2: reads credentials</span>
+        props.put(<span class="str">"password"</span>, <span class="type">System</span>.getenv(<span class="str">"DB_PASSWORD"</span>));
+        props.put(<span class="str">"ssl"</span>, <span class="str">"true"</span>);
+        <span class="kw">return</span> props;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PoolConfig</span> {
+    <span class="kw">public int</span> <span class="fn">getMaxConnections</span>() { <span class="kw">return</span> <span class="num">10</span>; }    <span class="cmt">// piece 3: pool settings</span>
+    <span class="kw">public int</span> <span class="fn">getTimeout</span>() { <span class="kw">return</span> <span class="num">5000</span>; }
+    <span class="kw">public boolean</span> <span class="fn">isValidationEnabled</span>() { <span class="kw">return true</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">DatabaseService</span> {
+    <span class="kw">public</span> <span class="type">Connection</span> <span class="fn">connect</span>() {
+        <span class="type">AppConfig</span> config = <span class="kw">new</span> <span class="type">AppConfig</span>();               <span class="cmt">// uses piece 1</span>
+        <span class="type">ConnectionProperties</span> connProps = <span class="kw">new</span> <span class="type">ConnectionProperties</span>(); <span class="cmt">// uses piece 2</span>
+        <span class="type">PoolConfig</span> poolConfig = <span class="kw">new</span> <span class="type">PoolConfig</span>();         <span class="cmt">// uses piece 3</span>
+
+        <span class="type">String</span> url = config.getDbUrl();
+        <span class="type">Properties</span> props = connProps.buildProperties();
+
+        <span class="cmt">// piece 4: actually creates the connection with pool settings</span>
+        <span class="type">DataSource</span> ds = <span class="fn">createPooledDataSource</span>(url, props,
+            poolConfig.getMaxConnections(),
+            poolConfig.getTimeout(),
+            poolConfig.isValidationEnabled());
+        <span class="kw">return</span> ds.getConnection();
+    }
+
+    <span class="kw">private</span> <span class="type">DataSource</span> <span class="fn">createPooledDataSource</span>(<span class="type">String</span> url, <span class="type">Properties</span> props,
+                                               <span class="kw">int</span> maxConn, <span class="kw">int</span> timeout,
+                                               <span class="kw">boolean</span> validate) {
+        <span class="cmt">// configures connection pool</span>
+        <span class="kw">return null</span>;
+    }
+}</code></pre>
+
+<p>The "solution" to "how we connect to the database" is spread across <code>AppConfig</code> (URL), <code>ConnectionProperties</code> (credentials), <code>PoolConfig</code> (pool settings), and <code>DatabaseService</code> (assembly). None of these classes tells the full story. To understand or change how connections work, you have to visit all four and mentally reassemble the pieces. If the company switches from environment variables to a secrets vault, you're editing three classes.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Cohesion.</strong> The pieces of one solution belong together. When they're scattered, no single class is responsible for the solution, which means no single class can be understood, tested, or changed in isolation. The knowledge of "how we connect to the database" is distributed, which means nobody owns it.</p>
+
+<p>This also violates <strong>Separation of Concerns</strong> in a subtle way: the concern is properly separated from other concerns (database connection is separate from order processing), but it's not properly <em>gathered</em> — its own internal parts are dispersed.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Condense the sprawl into a single class</h3>
+
+<p>Pull all the fragments into one cohesive class that owns the entire solution:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">DatabaseConnectionFactory</span> {
+    <span class="kw">private final</span> <span class="type">String</span> url;
+    <span class="kw">private final</span> <span class="type">String</span> user;
+    <span class="kw">private final</span> <span class="type">String</span> password;
+    <span class="kw">private final int</span> maxConnections;
+    <span class="kw">private final int</span> timeoutMs;
+    <span class="kw">private final boolean</span> validateConnections;
+
+    <span class="kw">public</span> <span class="fn">DatabaseConnectionFactory</span>() {
+        <span class="kw">this</span>.url = <span class="type">System</span>.getenv(<span class="str">"DB_URL"</span>);
+        <span class="kw">this</span>.user = <span class="type">System</span>.getenv(<span class="str">"DB_USER"</span>);
+        <span class="kw">this</span>.password = <span class="type">System</span>.getenv(<span class="str">"DB_PASSWORD"</span>);
+        <span class="kw">this</span>.maxConnections = <span class="num">10</span>;
+        <span class="kw">this</span>.timeoutMs = <span class="num">5000</span>;
+        <span class="kw">this</span>.validateConnections = <span class="kw">true</span>;
+    }
+
+    <span class="kw">public</span> <span class="fn">DatabaseConnectionFactory</span>(<span class="type">String</span> url, <span class="type">String</span> user, <span class="type">String</span> password,
+                                      <span class="kw">int</span> maxConnections, <span class="kw">int</span> timeoutMs,
+                                      <span class="kw">boolean</span> validateConnections) {
+        <span class="kw">this</span>.url = url;
+        <span class="kw">this</span>.user = user;
+        <span class="kw">this</span>.password = password;
+        <span class="kw">this</span>.maxConnections = maxConnections;
+        <span class="kw">this</span>.timeoutMs = timeoutMs;
+        <span class="kw">this</span>.validateConnections = validateConnections;
+    }
+
+    <span class="kw">public</span> <span class="type">Connection</span> <span class="fn">getConnection</span>() {
+        <span class="type">Properties</span> props = <span class="kw">new</span> <span class="type">Properties</span>();
+        props.put(<span class="str">"user"</span>, user);
+        props.put(<span class="str">"password"</span>, password);
+        props.put(<span class="str">"ssl"</span>, <span class="str">"true"</span>);
+
+        <span class="type">DataSource</span> ds = <span class="fn">createPooledDataSource</span>(props);
+        <span class="kw">return</span> ds.getConnection();
+    }
+
+    <span class="kw">private</span> <span class="type">DataSource</span> <span class="fn">createPooledDataSource</span>(<span class="type">Properties</span> props) {
+        <span class="cmt">// configures pool with url, props, maxConnections, timeoutMs, validateConnections</span>
+        <span class="kw">return null</span>;
+    }
+}</code></pre>
+
+<p>One class, one solution, one place to look. The three fragment classes (<code>AppConfig</code>, <code>ConnectionProperties</code>, <code>PoolConfig</code>) can be removed (or, if they serve other purposes, their database-specific parts are extracted into this factory).</p>
+
+<p>Now "how do we connect to the database?" has exactly one answer: <code>DatabaseConnectionFactory</code>.</p>
+
+<hr>
+
+<h3>Apply a Creation Method or Factory</h3>
+
+<p>Kerievsky specifically recommends replacing sprawled construction logic with a <strong>Creation Method</strong> — a single, intention-revealing method that encapsulates the full creation process:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">DatabaseConnectionFactory</span> {
+
+    <span class="kw">public static</span> <span class="type">Connection</span> <span class="fn">createDefault</span>() {
+        <span class="kw">return new</span> <span class="type">DatabaseConnectionFactory</span>().getConnection();
+    }
+
+    <span class="kw">public static</span> <span class="type">Connection</span> <span class="fn">createForTesting</span>() {
+        <span class="kw">return new</span> <span class="type">DatabaseConnectionFactory</span>(
+            <span class="str">"jdbc:h2:mem:test"</span>, <span class="str">"sa"</span>, <span class="str">""</span>, <span class="num">2</span>, <span class="num">1000</span>, <span class="kw">false</span>
+        ).getConnection();
+    }
+
+    <span class="cmt">// ... full class as above</span>
+}</code></pre>
+
+<p>Every caller uses <code>DatabaseConnectionFactory.createDefault()</code> or <code>DatabaseConnectionFactory.createForTesting()</code>. The sprawl is gone — creation is consolidated, and the intent is named.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

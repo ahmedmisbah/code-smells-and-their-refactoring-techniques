@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mysterious Name — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Mysterious Name</h1>
+<p class="aka">Also known as: Inefficient Name</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A variable, method, class, or parameter whose name doesn't communicate its purpose. It might be a single letter (<code>x</code>, <code>d</code>, <code>tmp</code>), a cryptic abbreviation (<code>calcPrcDscPct</code>), a misleading name (a method called <code>process</code> that validates), or a name so generic it could mean anything (<code>data</code>, <code>info</code>, <code>handle</code>, <code>manager</code>, <code>doStuff</code>).</p>
+
+<p>Naming is the most frequent act of design in programming. A good name replaces a comment, prevents misuse, and lets a reader understand code without tracing through its implementation. A bad name forces the reader to reverse-engineer meaning from context — or worse, builds a false mental model that leads to bugs.</p>
+
+<p>Fowler elevated this to a first-class smell in his second edition because poor naming is the single most common barrier to code comprehension.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Proc {
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt;&gt; d;
+    <span class="kw">private</span> <span class="kw">int</span> st;
+
+    <span class="kw">public</span> <span class="kw">double</span> calc(<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; r) {
+        <span class="kw">double</span> t = 0;
+        <span class="kw">for</span> (<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; e : d) {
+            <span class="kw">double</span> v = ((<span class="type">Number</span>) e.get(<span class="str">&quot;a&quot;</span>)).doubleValue();
+            <span class="kw">int</span> q = ((<span class="type">Number</span>) e.get(<span class="str">&quot;b&quot;</span>)).intValue();
+            <span class="kw">double</span> lp = v * q;
+            <span class="kw">if</span> ((<span class="kw">int</span>) e.get(<span class="str">&quot;c&quot;</span>) == 1) {
+                lp *= 0.9;
+            }
+            t += lp;
+        }
+        st = 1;
+        <span class="kw">return</span> t;
+    }
+}</code></pre>
+
+<p>Without reading every line and decoding the single-letter names, this code is opaque. What is <code>Proc</code>? What does <code>d</code> hold? What do <code>a</code>, <code>b</code>, <code>c</code> in the map represent? What does <code>st</code> track? What does <code>calc</code> calculate? Every name requires the reader to solve a puzzle.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Readability and intent-revealing design.</strong> Code is read far more often than it's written. A name is the primary tool for communicating intent to the next reader (including your future self). Mysterious names force readers to hold context in their head, slow comprehension, and increase the risk of misunderstanding.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Rename Variable, Rename Method, Rename Class</h3>
+
+<p>The fix is straightforward: give things names that reveal their purpose.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> OrderPricingEngine {
+    <span class="kw">private</span> <span class="type">List</span>&lt;OrderItem&gt; items;
+    <span class="kw">private</span> <span class="kw">boolean</span> calculated;
+
+    <span class="kw">public</span> <span class="kw">double</span> calculateTotal(Order order) {
+        <span class="kw">double</span> total = 0;
+        <span class="kw">for</span> (OrderItem item : items) {
+            <span class="kw">double</span> unitPrice = item.getPrice();
+            <span class="kw">int</span> quantity = item.getQuantity();
+            <span class="kw">double</span> linePrice = unitPrice * quantity;
+            <span class="kw">if</span> (item.isDiscountEligible()) {
+                linePrice *= 0.9;
+            }
+            total += linePrice;
+        }
+        calculated = <span class="kw">true</span>;
+        <span class="kw">return</span> total;
+    }
+}</code></pre>
+
+<p>Same logic, zero puzzles. Every name answers the question "what is this?"</p>
+
+<h3>Naming guidelines</h3>
+
+<div class="note"><strong>Methods:</strong> verb + noun describing what it does — <code>calculateTotal</code>, <code>findUserById</code>, <code>validateOrder</code>. If you can't name it clearly, it's probably doing too many things (see Long Method).</div>
+
+<div class="note"><strong>Variables:</strong> describe the contents — <code>unitPrice</code> not <code>v</code>, <code>lineItems</code> not <code>d</code>, <code>retryCount</code> not <code>rc</code>.</div>
+
+<div class="note"><strong>Classes:</strong> noun describing the concept — <code>OrderPricingEngine</code> not <code>Proc</code>, <code>CustomerRepository</code> not <code>CustMgr</code>.</div>
+
+<div class="note"><strong>Booleans:</strong> phrase as a question — <code>isValid</code>, <code>hasPermission</code>, <code>canRetry</code>.</div>
+
+<div class="note"><strong>Avoid generic names:</strong> <code>data</code>, <code>info</code>, <code>item</code>, <code>result</code>, <code>temp</code>, <code>thing</code> only when the context genuinely is generic (like a utility method that operates on any type).</div>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

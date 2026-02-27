@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Large Class — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0f2e;
+    color: #d4daf0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.6rem;
+  }
+
+  h2 {
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.4rem;
+  }
+
+  h3 {
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  h4 {
+    color: #FFFFFF;
+    font-size: 1.1rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    margin-bottom: 1rem;
+  }
+
+  .aka {
+    color: #9ba3c2;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  strong {
+    color: #FFFFFF;
+  }
+
+  em {
+    color: #d4a0ff;
+    font-style: italic;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #1e2a5e;
+    margin: 2rem 0;
+  }
+
+  pre {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin-bottom: 1.2rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+  }
+
+  pre code {
+    color: #d4daf0;
+  }
+
+  p code, li code {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    color: #c77dff;
+  }
+
+  .kw { color: #c77dff; }
+  .type { color: #6b9fff; }
+  .str { color: #a8c8ff; }
+  .num { color: #6b9fff; }
+  .cmt { color: #9ba3c2; font-style: italic; }
+  .fn { color: #d4a0ff; }
+  .ann { color: #e0b0ff; }
+
+  .before-after {
+    color: #c77dff;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  .logo-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #1e2a5e;
+  }
+
+  .logo-header img {
+    max-width: 180px;
+    height: auto;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #6b9fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #1e2a5e;
+    text-align: center;
+    color: #7880a0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  footer img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Large Class</h1>
+<p class="aka"><strong>Also known as:</strong> Blob</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A class that has grown to take on too many responsibilities — too many fields, too many methods, too many lines of code. Like long methods, large classes grow incrementally: it's always easier to add one more field or method to an existing class than to figure out where a new class should go. Over time, the class becomes a sprawling catch-all that knows too much and does too much.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">Employee</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> email;
+    <span class="kw">private</span> <span class="type">String</span> phone;
+    <span class="kw">private</span> <span class="type">String</span> street;
+    <span class="kw">private</span> <span class="type">String</span> city;
+    <span class="kw">private</span> <span class="type">String</span> state;
+    <span class="kw">private</span> <span class="type">String</span> zipCode;
+    <span class="kw">private</span> <span class="type">String</span> country;
+    <span class="kw">private double</span> baseSalary;
+    <span class="kw">private double</span> bonus;
+    <span class="kw">private double</span> stockOptions;
+    <span class="kw">private</span> <span class="type">String</span> bankName;
+    <span class="kw">private</span> <span class="type">String</span> bankAccountNumber;
+    <span class="kw">private</span> <span class="type">String</span> bankRoutingNumber;
+    <span class="kw">private</span> <span class="type">String</span> taxId;
+    <span class="kw">private double</span> federalTaxRate;
+    <span class="kw">private double</span> stateTaxRate;
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">String</span>&gt; skills;
+    <span class="kw">private</span> <span class="type">String</span> department;
+    <span class="kw">private</span> <span class="type">String</span> managerId;
+    <span class="kw">private</span> <span class="type">LocalDate</span> hireDate;
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">PerformanceReview</span>&gt; reviews;
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getFullAddress</span>() {
+        <span class="kw">return</span> street + <span class="str">", "</span> + city + <span class="str">", "</span> + state + <span class="str">" "</span> + zipCode + <span class="str">", "</span> + country;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isInState</span>(<span class="type">String</span> stateCode) {
+        <span class="kw">return this</span>.state.equals(stateCode);
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateGrossPay</span>() {
+        <span class="kw">return</span> baseSalary + bonus + stockOptions;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateFederalTax</span>() {
+        <span class="kw">return</span> calculateGrossPay() * federalTaxRate;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateStateTax</span>() {
+        <span class="kw">return</span> calculateGrossPay() * stateTaxRate;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateNetPay</span>() {
+        <span class="kw">return</span> calculateGrossPay() - calculateFederalTax() - calculateStateTax();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generatePayStub</span>() {
+        <span class="kw">return</span> <span class="str">"Pay Stub for "</span> + name + <span class="str">"\n"</span>
+             + <span class="str">"Gross: $"</span> + calculateGrossPay() + <span class="str">"\n"</span>
+             + <span class="str">"Federal Tax: $"</span> + calculateFederalTax() + <span class="str">"\n"</span>
+             + <span class="str">"State Tax: $"</span> + calculateStateTax() + <span class="str">"\n"</span>
+             + <span class="str">"Net: $"</span> + calculateNetPay();
+    }
+
+    <span class="kw">public void</span> <span class="fn">processDirectDeposit</span>() {
+        <span class="cmt">// connects to bank API using bankName, bankAccountNumber, bankRoutingNumber</span>
+        <span class="cmt">// transfers calculateNetPay() to employee's account</span>
+    }
+
+    <span class="kw">public double</span> <span class="fn">getAverageReviewScore</span>() {
+        <span class="kw">return</span> reviews.stream()
+            .mapToDouble(<span class="type">PerformanceReview</span>::getScore)
+            .average().orElse(<span class="num">0</span>);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isEligibleForPromotion</span>() {
+        <span class="kw">return</span> getAverageReviewScore() &gt; <span class="num">4.0</span>
+            &amp;&amp; reviews.size() &gt;= <span class="num">3</span>
+            &amp;&amp; skills.size() &gt;= <span class="num">5</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generatePerformanceReport</span>() {
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        sb.append(<span class="str">"Performance Report: "</span>).append(name).append(<span class="str">"\n"</span>);
+        <span class="kw">for</span> (<span class="type">PerformanceReview</span> review : reviews) {
+            sb.append(<span class="str">"  "</span>).append(review.getDate())
+              .append(<span class="str">": "</span>).append(review.getScore())
+              .append(<span class="str">" - "</span>).append(review.getComments()).append(<span class="str">"\n"</span>);
+        }
+        sb.append(<span class="str">"Average: "</span>).append(getAverageReviewScore()).append(<span class="str">"\n"</span>);
+        sb.append(<span class="str">"Promotion Eligible: "</span>).append(isEligibleForPromotion());
+        <span class="kw">return</span> sb.toString();
+    }
+
+    <span class="cmt">// ... dozens more methods for benefits, time-off, training, etc.</span>
+}</code></pre>
+
+<p>This <code>Employee</code> class manages identity, address, compensation, tax calculation, payroll processing, banking, performance reviews, and promotion logic — at least six or seven distinct responsibilities.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Single Responsibility Principle (SRP).</strong> A class should have only one reason to change. This <code>Employee</code> changes when address formatting rules change, when tax law changes, when the bank API changes, when performance review criteria change, when payroll requirements change — and so on. Each of those is a separate axis of change, yet they're all coupled into one class.</p>
+
+<p>It also violates <strong>high cohesion</strong>: the fields and methods don't form a tight, related group. The bank routing number has nothing to do with performance reviews, yet they sit side by side. Low cohesion is the hallmark of a class that's trying to be everything to everyone.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The primary refactoring is <strong>Extract Class</strong>: identify clusters of fields and methods that belong together and move them into their own classes.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Address</span> {
+    <span class="kw">private</span> <span class="type">String</span> street;
+    <span class="kw">private</span> <span class="type">String</span> city;
+    <span class="kw">private</span> <span class="type">String</span> state;
+    <span class="kw">private</span> <span class="type">String</span> zipCode;
+    <span class="kw">private</span> <span class="type">String</span> country;
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getFullAddress</span>() {
+        <span class="kw">return</span> street + <span class="str">", "</span> + city + <span class="str">", "</span> + state + <span class="str">" "</span> + zipCode + <span class="str">", "</span> + country;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isInState</span>(<span class="type">String</span> stateCode) {
+        <span class="kw">return this</span>.state.equals(stateCode);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Compensation</span> {
+    <span class="kw">private double</span> baseSalary;
+    <span class="kw">private double</span> bonus;
+    <span class="kw">private double</span> stockOptions;
+
+    <span class="kw">public double</span> <span class="fn">calculateGrossPay</span>() {
+        <span class="kw">return</span> baseSalary + bonus + stockOptions;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">TaxCalculator</span> {
+    <span class="kw">private double</span> federalTaxRate;
+    <span class="kw">private double</span> stateTaxRate;
+
+    <span class="kw">public double</span> <span class="fn">calculateFederalTax</span>(<span class="kw">double</span> grossPay) {
+        <span class="kw">return</span> grossPay * federalTaxRate;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateStateTax</span>(<span class="kw">double</span> grossPay) {
+        <span class="kw">return</span> grossPay * stateTaxRate;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateTotalTax</span>(<span class="kw">double</span> grossPay) {
+        <span class="kw">return</span> calculateFederalTax(grossPay) + calculateStateTax(grossPay);
+    }
+}
+
+<span class="kw">public class</span> <span class="type">BankAccount</span> {
+    <span class="kw">private</span> <span class="type">String</span> bankName;
+    <span class="kw">private</span> <span class="type">String</span> accountNumber;
+    <span class="kw">private</span> <span class="type">String</span> routingNumber;
+
+    <span class="kw">public void</span> <span class="fn">processDirectDeposit</span>(<span class="kw">double</span> amount) {
+        <span class="cmt">// connects to bank API and transfers amount</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PerformanceRecord</span> {
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">PerformanceReview</span>&gt; reviews;
+
+    <span class="kw">public double</span> <span class="fn">getAverageScore</span>() {
+        <span class="kw">return</span> reviews.stream()
+            .mapToDouble(<span class="type">PerformanceReview</span>::getScore)
+            .average().orElse(<span class="num">0</span>);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isEligibleForPromotion</span>(<span class="kw">int</span> requiredReviews,
+                                           <span class="kw">double</span> minScore,
+                                           <span class="kw">int</span> minSkills,
+                                           <span class="type">List</span>&lt;<span class="type">String</span>&gt; skills) {
+        <span class="kw">return</span> getAverageScore() &gt; minScore
+            &amp;&amp; reviews.size() &gt;= requiredReviews
+            &amp;&amp; skills.size() &gt;= minSkills;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generateReport</span>(<span class="type">String</span> employeeName) {
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        sb.append(<span class="str">"Performance Report: "</span>).append(employeeName).append(<span class="str">"\n"</span>);
+        <span class="kw">for</span> (<span class="type">PerformanceReview</span> review : reviews) {
+            sb.append(<span class="str">"  "</span>).append(review.getDate())
+              .append(<span class="str">": "</span>).append(review.getScore())
+              .append(<span class="str">" - "</span>).append(review.getComments()).append(<span class="str">"\n"</span>);
+        }
+        sb.append(<span class="str">"Average: "</span>).append(getAverageScore());
+        <span class="kw">return</span> sb.toString();
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Employee</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> email;
+    <span class="kw">private</span> <span class="type">String</span> phone;
+    <span class="kw">private</span> <span class="type">String</span> taxId;
+    <span class="kw">private</span> <span class="type">String</span> department;
+    <span class="kw">private</span> <span class="type">String</span> managerId;
+    <span class="kw">private</span> <span class="type">LocalDate</span> hireDate;
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">String</span>&gt; skills;
+
+    <span class="kw">private</span> <span class="type">Address</span> address;
+    <span class="kw">private</span> <span class="type">Compensation</span> compensation;
+    <span class="kw">private</span> <span class="type">TaxCalculator</span> taxCalculator;
+    <span class="kw">private</span> <span class="type">BankAccount</span> bankAccount;
+    <span class="kw">private</span> <span class="type">PerformanceRecord</span> performanceRecord;
+
+    <span class="kw">public double</span> <span class="fn">calculateNetPay</span>() {
+        <span class="kw">double</span> gross = compensation.calculateGrossPay();
+        <span class="kw">double</span> tax = taxCalculator.calculateTotalTax(gross);
+        <span class="kw">return</span> gross - tax;
+    }
+
+    <span class="kw">public void</span> <span class="fn">processPayroll</span>() {
+        bankAccount.processDirectDeposit(calculateNetPay());
+    }
+}</code></pre>
+
+<p><code>Employee</code> is now a thin coordinator. Each extracted class is cohesive (its fields and methods are tightly related), independently testable, and changes for exactly one reason.</p>
+
+<h3>Supporting refactorings</h3>
+
+<hr>
+
+<h4>Extract Subclass</h4>
+
+<p>When some fields and methods are only used in specific variants of the class, pull them into a subclass rather than a sibling class.</p>
+
+<p class="before-after">Before — <code>Employee</code> has fields that only apply to certain types:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Employee</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private double</span> baseSalary;
+    <span class="kw">private double</span> hourlyRate;      <span class="cmt">// only for contractors</span>
+    <span class="kw">private int</span> hoursWorked;        <span class="cmt">// only for contractors</span>
+    <span class="kw">private double</span> bonus;           <span class="cmt">// only for full-time</span>
+    <span class="kw">private double</span> stockOptions;    <span class="cmt">// only for full-time</span>
+
+    <span class="kw">public double</span> <span class="fn">calculatePay</span>() {
+        <span class="kw">if</span> (hourlyRate &gt; <span class="num">0</span>) {
+            <span class="kw">return</span> hourlyRate * hoursWorked;
+        }
+        <span class="kw">return</span> baseSalary + bonus + stockOptions;
+    }
+}</code></pre>
+
+<p class="before-after">After — variant-specific fields live in subclasses:</p>
+
+<pre><code><span class="kw">public abstract class</span> <span class="type">Employee</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">protected double</span> baseSalary;
+
+    <span class="kw">public abstract double</span> <span class="fn">calculatePay</span>();
+}
+
+<span class="kw">public class</span> <span class="type">FullTimeEmployee</span> <span class="kw">extends</span> <span class="type">Employee</span> {
+    <span class="kw">private double</span> bonus;
+    <span class="kw">private double</span> stockOptions;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">calculatePay</span>() {
+        <span class="kw">return</span> baseSalary + bonus + stockOptions;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Contractor</span> <span class="kw">extends</span> <span class="type">Employee</span> {
+    <span class="kw">private double</span> hourlyRate;
+    <span class="kw">private int</span> hoursWorked;
+
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">calculatePay</span>() {
+        <span class="kw">return</span> hourlyRate * hoursWorked;
+    }
+}</code></pre>
+
+<hr>
+
+<h4>Extract Interface</h4>
+
+<p>When different clients use different subsets of a large class, define interfaces so each client depends only on what it needs. This makes the class's responsibilities visible and enforces boundaries.</p>
+
+<p class="before-after">Before — callers depend on the entire <code>Employee</code> class even when they only need a slice:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">PayrollService</span> {
+    <span class="kw">public void</span> <span class="fn">process</span>(<span class="type">Employee</span> employee) {
+        <span class="cmt">// only needs pay calculation — but sees everything</span>
+        <span class="kw">double</span> net = employee.calculateNetPay();
+        employee.processPayroll();
+    }
+}
+
+<span class="kw">public class</span> <span class="type">DirectoryService</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">lookup</span>(<span class="type">Employee</span> employee) {
+        <span class="cmt">// only needs contact info — but sees everything</span>
+        <span class="kw">return</span> employee.getName() + <span class="str">" - "</span> + employee.getEmail();
+    }
+}</code></pre>
+
+<p class="before-after">After — narrow interfaces expose only what each client needs:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">Payable</span> {
+    <span class="kw">double</span> <span class="fn">calculateNetPay</span>();
+    <span class="kw">void</span> <span class="fn">processPayroll</span>();
+}
+
+<span class="kw">public interface</span> <span class="type">ContactInfo</span> {
+    <span class="type">String</span> <span class="fn">getName</span>();
+    <span class="type">String</span> <span class="fn">getEmail</span>();
+    <span class="type">String</span> <span class="fn">getPhone</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Employee</span> <span class="kw">implements</span> <span class="type">Payable</span>, <span class="type">ContactInfo</span> {
+    <span class="cmt">// ... full implementation</span>
+}
+
+<span class="kw">public class</span> <span class="type">PayrollService</span> {
+    <span class="kw">public void</span> <span class="fn">process</span>(<span class="type">Payable</span> payable) {
+        <span class="kw">double</span> net = payable.calculateNetPay();
+        payable.processPayroll();
+    }
+}
+
+<span class="kw">public class</span> <span class="type">DirectoryService</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">lookup</span>(<span class="type">ContactInfo</span> contact) {
+        <span class="kw">return</span> contact.getName() + <span class="str">" - "</span> + contact.getEmail();
+    }
+}</code></pre>
+
+<p>This follows the <strong>Interface Segregation Principle (ISP)</strong>: no client should be forced to depend on methods it doesn't use. It also makes it much clearer where the class should eventually be split.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

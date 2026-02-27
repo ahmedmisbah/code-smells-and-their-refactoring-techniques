@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feature Envy — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Feature Envy</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A method that is more interested in another class's data than in its own. It reaches into another object, pulls out fields, and computes on them — doing work that belongs to the class it's reaching into. The method is in the wrong home. It <em>envies</em> the features of another class.</p>
+
+<p>The telltale sign: a method that makes multiple calls to another object's getters to assemble a result. The logic is about that other object, not about the class the method lives in. If you moved the method to the other class, it would stop needing all those getter calls and would operate directly on the fields.</p>
+
+<p>Feature Envy and Inappropriate Intimacy are related but distinct. Inappropriate Intimacy is about two classes knowing each other's <em>internals</em>. Feature Envy is about a method being in the <em>wrong class</em> — it might use only public getters, but it uses so many of them from one other class that the method clearly belongs there.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> street;
+    <span class="kw">private</span> <span class="type">String</span> city;
+    <span class="kw">private</span> <span class="type">String</span> state;
+    <span class="kw">private</span> <span class="type">String</span> zipCode;
+    <span class="kw">private</span> <span class="type">String</span> country;
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="type">String</span> getStreet() { <span class="kw">return</span> street; }
+    <span class="kw">public</span> <span class="type">String</span> getCity() { <span class="kw">return</span> city; }
+    <span class="kw">public</span> <span class="type">String</span> getState() { <span class="kw">return</span> state; }
+    <span class="kw">public</span> <span class="type">String</span> getZipCode() { <span class="kw">return</span> zipCode; }
+    <span class="kw">public</span> <span class="type">String</span> getCountry() { <span class="kw">return</span> country; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> ShippingService {
+
+    <span class="kw">public</span> <span class="type">String</span> formatShippingLabel(<span class="type">Customer</span> customer) {
+        <span class="cmt">// six calls to Customer — this method envies Customer&#x27;s data</span>
+        <span class="type">String</span> label = customer.getName() + <span class="str">&quot;\n&quot;</span>
+            + customer.getStreet() + <span class="str">&quot;\n&quot;</span>
+            + customer.getCity() + <span class="str">&quot;, &quot;</span> + customer.getState()
+            + <span class="str">&quot; &quot;</span> + customer.getZipCode() + <span class="str">&quot;\n&quot;</span>
+            + customer.getCountry();
+        <span class="kw">return</span> label;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> calculateShippingCost(<span class="type">Customer</span> customer, <span class="kw">double</span> weight) {
+        <span class="cmt">// more envy — computing on Customer&#x27;s data</span>
+        <span class="kw">if</span> (customer.getCountry().equals(<span class="str">&quot;US&quot;</span>)) {
+            <span class="kw">if</span> (customer.getState().equals(<span class="str">&quot;HI&quot;</span>)
+                    || customer.getState().equals(<span class="str">&quot;AK&quot;</span>)) {
+                <span class="kw">return</span> weight * 3.50;
+            }
+            <span class="kw">return</span> weight * 1.50;
+        }
+        <span class="kw">return</span> weight * 5.00;
+    }
+}</code></pre>
+
+<p><code>formatShippingLabel</code> calls six getters on <code>Customer</code> and uses zero fields from <code>ShippingService</code>. It's a <code>Customer</code> method that accidentally lives in <code>ShippingService</code>. Similarly, <code>calculateShippingCost</code> makes decisions based entirely on <code>Customer</code>'s location data.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Cohesion and encapsulation.</strong> A method should live with the data it operates on. When a method lives in one class but operates primarily on another class's data, cohesion is broken — the method isn't cohesive with its home class. It also weakens the data-owning class: knowledge about how to format or use the data is scattered across the codebase instead of being concentrated where the data lives.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Move Method — move the envious method to the class it envies</h3>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> street;
+    <span class="kw">private</span> <span class="type">String</span> city;
+    <span class="kw">private</span> <span class="type">String</span> state;
+    <span class="kw">private</span> <span class="type">String</span> zipCode;
+    <span class="kw">private</span> <span class="type">String</span> country;
+
+    <span class="kw">public</span> <span class="type">String</span> formatShippingLabel() {
+        <span class="kw">return</span> name + <span class="str">&quot;\n&quot;</span>
+            + street + <span class="str">&quot;\n&quot;</span>
+            + city + <span class="str">&quot;, &quot;</span> + state + <span class="str">&quot; &quot;</span> + zipCode + <span class="str">&quot;\n&quot;</span>
+            + country;
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isDomestic() {
+        <span class="kw">return</span> <span class="str">&quot;US&quot;</span>.equals(country);
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isRemoteUS() {
+        <span class="kw">return</span> isDomestic()
+            &amp;&amp; (<span class="str">&quot;HI&quot;</span>.equals(state) || <span class="str">&quot;AK&quot;</span>.equals(state));
+    }
+
+    <span class="cmt">// getters that are still needed for other purposes</span>
+    <span class="kw">public</span> <span class="type">String</span> getCountry() { <span class="kw">return</span> country; }
+}</code></pre>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> ShippingService {
+
+    <span class="kw">public</span> <span class="type">String</span> getShippingLabel(<span class="type">Customer</span> customer) {
+        <span class="kw">return</span> customer.formatShippingLabel();
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> calculateShippingCost(<span class="type">Customer</span> customer, <span class="kw">double</span> weight) {
+        <span class="kw">if</span> (customer.isRemoteUS()) <span class="kw">return</span> weight * 3.50;
+        <span class="kw">if</span> (customer.isDomestic()) <span class="kw">return</span> weight * 1.50;
+        <span class="kw">return</span> weight * 5.00;
+    }
+}</code></pre>
+
+<p><code>formatShippingLabel</code> now lives on <code>Customer</code>, where it has direct access to the fields — no getters needed. <code>ShippingService</code> asks <code>Customer</code> questions about itself (<code>isDomestic</code>, <code>isRemoteUS</code>) instead of interrogating its fields.</p>
+
+<hr>
+
+<h3>Extract Class when the envy targets a subset of fields</h3>
+
+<p>If the envied data is a cluster of related fields (like the address fields above), extract them into their own class first, then move the method there.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Address</span> {
+    <span class="kw">private</span> <span class="type">String</span> street;
+    <span class="kw">private</span> <span class="type">String</span> city;
+    <span class="kw">private</span> <span class="type">String</span> state;
+    <span class="kw">private</span> <span class="type">String</span> zipCode;
+    <span class="kw">private</span> <span class="type">String</span> country;
+
+    <span class="kw">public</span> <span class="type">String</span> formatLabel() {
+        <span class="kw">return</span> street + <span class="str">&quot;\n&quot;</span> + city + <span class="str">&quot;, &quot;</span> + state + <span class="str">&quot; &quot;</span> + zipCode + <span class="str">&quot;\n&quot;</span> + country;
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isDomestic() { <span class="kw">return</span> <span class="str">&quot;US&quot;</span>.equals(country); }
+    <span class="kw">public</span> <span class="kw">boolean</span> isRemoteUS() {
+        <span class="kw">return</span> isDomestic() &amp;&amp; (<span class="str">&quot;HI&quot;</span>.equals(state) || <span class="str">&quot;AK&quot;</span>.equals(state));
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">Address</span> address;
+
+    <span class="kw">public</span> <span class="type">String</span> formatShippingLabel() {
+        <span class="kw">return</span> name + <span class="str">&quot;\n&quot;</span> + address.formatLabel();
+    }
+}</code></pre>
+
+<p>This combines Extract Class (Data Clumps fix) with Move Method (Feature Envy fix) — two smells eliminated in one refactoring.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

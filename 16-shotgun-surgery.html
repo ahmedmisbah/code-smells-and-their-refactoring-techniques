@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shotgun Surgery — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Shotgun Surgery</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>One logical change requires small edits scattered across many different classes. You add a new field to the domain — say, a customer's middle name — and suddenly you're updating the entity class, the DTO, the mapper, the validator, the repository query, the API response, the report template, and the test fixtures. You make the same conceptual change in fifteen places, and if you miss one, things silently break.</p>
+
+<p>Shotgun Surgery is the mirror image of Divergent Change. Divergent Change means one class changes for many reasons. Shotgun Surgery means one reason causes changes in many classes. They're the two sides of misplaced responsibility.</p>
+
+<p>The smell is a sign that a single responsibility has been <em>scattered</em> — bits of it live in many places instead of being consolidated in one.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<p>Suppose you need to add support for a new currency. Here's what you have to touch:</p>
+
+<pre><code><span class="cmt">// 1. The enum</span>
+<span class="kw">public enum</span> <span class="type">Currency</span> {
+    USD, EUR, GBP  <span class="cmt">// add JPY here</span>
+}
+
+<span class="cmt">// 2. The formatter</span>
+<span class="kw">public class</span> <span class="type">CurrencyFormatter</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="kw">double</span> amount, <span class="type">Currency</span> currency) {
+        <span class="kw">switch</span> (currency) {
+            <span class="kw">case</span> USD: <span class="kw">return</span> <span class="str">"$"</span> + amount;
+            <span class="kw">case</span> EUR: <span class="kw">return</span> <span class="str">"€"</span> + amount;
+            <span class="kw">case</span> GBP: <span class="kw">return</span> <span class="str">"£"</span> + amount;
+            <span class="cmt">// add JPY case here</span>
+            <span class="kw">default</span>: <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>();
+        }
+    }
+}
+
+<span class="cmt">// 3. The exchange rate service</span>
+<span class="kw">public class</span> <span class="type">ExchangeRateService</span> {
+    <span class="kw">public double</span> <span class="fn">getRate</span>(<span class="type">Currency</span> from, <span class="type">Currency</span> to) {
+        <span class="kw">if</span> (from == <span class="type">Currency</span>.USD &amp;&amp; to == <span class="type">Currency</span>.EUR) <span class="kw">return</span> <span class="num">0.93</span>;
+        <span class="kw">if</span> (from == <span class="type">Currency</span>.USD &amp;&amp; to == <span class="type">Currency</span>.GBP) <span class="kw">return</span> <span class="num">0.79</span>;
+        <span class="cmt">// add USD→JPY, EUR→JPY, GBP→JPY here</span>
+        <span class="kw">return</span> <span class="num">1.0</span>;
+    }
+}
+
+<span class="cmt">// 4. The validator</span>
+<span class="kw">public class</span> <span class="type">PaymentValidator</span> {
+    <span class="kw">private static final</span> <span class="type">Set</span>&lt;<span class="type">Currency</span>&gt; SUPPORTED = <span class="type">Set</span>.of(
+        <span class="type">Currency</span>.USD, <span class="type">Currency</span>.EUR, <span class="type">Currency</span>.GBP
+        <span class="cmt">// add JPY here</span>
+    );
+
+    <span class="kw">public boolean</span> <span class="fn">isSupported</span>(<span class="type">Currency</span> currency) {
+        <span class="kw">return</span> SUPPORTED.contains(currency);
+    }
+}
+
+<span class="cmt">// 5. The report generator</span>
+<span class="kw">public class</span> <span class="type">FinancialReport</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generate</span>() {
+        <span class="cmt">// hardcoded column for each currency</span>
+        <span class="kw">return</span> <span class="str">"USD | EUR | GBP"</span>;  <span class="cmt">// add | JPY here</span>
+    }
+}
+
+<span class="cmt">// 6. The test data</span>
+<span class="kw">public class</span> <span class="type">TestFixtures</span> {
+    <span class="kw">public static</span> <span class="type">Payment</span> <span class="fn">usdPayment</span>() { <span class="kw">return new</span> <span class="type">Payment</span>(<span class="num">100</span>, <span class="type">Currency</span>.USD); }
+    <span class="kw">public static</span> <span class="type">Payment</span> <span class="fn">eurPayment</span>() { <span class="kw">return new</span> <span class="type">Payment</span>(<span class="num">100</span>, <span class="type">Currency</span>.EUR); }
+    <span class="kw">public static</span> <span class="type">Payment</span> <span class="fn">gbpPayment</span>() { <span class="kw">return new</span> <span class="type">Payment</span>(<span class="num">100</span>, <span class="type">Currency</span>.GBP); }
+    <span class="cmt">// add jpyPayment() here</span>
+}</code></pre>
+
+<p>Adding one currency touches six files. Each edit is small, but missing any one of them (especially the validator or the exchange rate service) means silent bugs. And six files is generous — a real system might require twenty or more edits.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Cohesion.</strong> Everything that defines "what it means to support a currency" is scattered. The symbol lives in the formatter, the exchange rates live in the rate service, the validation lives in the validator, and the test data lives in the fixtures. There's no single place that represents "a currency and everything about it."</p>
+
+<p>This is also a violation of the <strong>DRY principle</strong> at a conceptual level: the knowledge of "which currencies exist and how they behave" is repeated in fragments across the codebase.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Move Method + Move Field — consolidate the scattered pieces</h3>
+
+<p>Pull currency-specific knowledge into the <code>Currency</code> type itself:</p>
+
+<pre><code><span class="kw">public enum</span> <span class="type">Currency</span> {
+    USD(<span class="str">"$"</span>, <span class="str">"US Dollar"</span>),
+    EUR(<span class="str">"€"</span>, <span class="str">"Euro"</span>),
+    GBP(<span class="str">"£"</span>, <span class="str">"British Pound"</span>),
+    JPY(<span class="str">"¥"</span>, <span class="str">"Japanese Yen"</span>);   <span class="cmt">// add here — once</span>
+
+    <span class="kw">private final</span> <span class="type">String</span> symbol;
+    <span class="kw">private final</span> <span class="type">String</span> displayName;
+
+    <span class="fn">Currency</span>(<span class="type">String</span> symbol, <span class="type">String</span> displayName) {
+        <span class="kw">this</span>.symbol = symbol;
+        <span class="kw">this</span>.displayName = displayName;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="kw">double</span> amount) {
+        <span class="kw">return</span> symbol + <span class="type">String</span>.format(<span class="str">"%.2f"</span>, amount);
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getSymbol</span>() { <span class="kw">return</span> symbol; }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getDisplayName</span>() { <span class="kw">return</span> displayName; }
+}</code></pre>
+
+<p>The formatter collapses:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">CurrencyFormatter</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>(<span class="kw">double</span> amount, <span class="type">Currency</span> currency) {
+        <span class="kw">return</span> currency.format(amount);
+    }
+}</code></pre>
+
+<p>The validator collapses — if it's in the enum, it's supported:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">PaymentValidator</span> {
+    <span class="kw">public boolean</span> <span class="fn">isSupported</span>(<span class="type">Currency</span> currency) {
+        <span class="kw">return</span> currency != <span class="kw">null</span>; <span class="cmt">// if it parses, it's valid</span>
+    }
+}</code></pre>
+
+<p>The exchange rate service can be driven by data rather than conditionals:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">ExchangeRateService</span> {
+    <span class="kw">private final</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Double</span>&gt; rates; <span class="cmt">// loaded from config or database</span>
+
+    <span class="kw">public</span> <span class="fn">ExchangeRateService</span>(<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Double</span>&gt; rates) {
+        <span class="kw">this</span>.rates = rates;
+    }
+
+    <span class="kw">public double</span> <span class="fn">getRate</span>(<span class="type">Currency</span> from, <span class="type">Currency</span> to) {
+        <span class="type">String</span> key = from.name() + <span class="str">"_"</span> + to.name();
+        <span class="kw">return</span> rates.getOrDefault(key, <span class="num">1.0</span>);
+    }
+}</code></pre>
+
+<p>Now adding JPY means: add one enum constant, add exchange rate rows in the config data. One or two locations, not six.</p>
+
+<hr>
+
+<h3>Inline Class — when scatter is caused by over-decomposition</h3>
+
+<p>Sometimes Shotgun Surgery happens because a concept was split into too many tiny classes. If <code>CurrencySymbol</code>, <code>CurrencyName</code>, <code>CurrencyValidator</code>, and <code>CurrencyFormatter</code> are all separate classes with one method each, inlining them back into a single <code>Currency</code> class reduces the scatter.</p>
+
+<p>The goal is a balance: each concept lives in one place (avoiding Shotgun Surgery) but each class has one responsibility (avoiding Divergent Change). When the pendulum swings too far toward decomposition, Inline Class pushes it back.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

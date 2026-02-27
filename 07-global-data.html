@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Global Data — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  h4 { color: #FFFFFF; font-size: 1.1rem; margin-top: 1.8rem; margin-bottom: 0.6rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; } .label { color: #FFFFFF; font-weight: bold; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Global Data</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Data that can be read and modified from anywhere in the codebase — global variables, public static fields, singletons with mutable state, or any shared state with no access control. The problem isn't that the data exists; it's that <em>any</em> code, anywhere, can change it without the rest of the system knowing. When something goes wrong, the debugging question is no longer "what method changed this?" — it's "which of the 400 classes that can see this variable changed it, and in what order?"</p>
+
+<p>Global data is seductive because it's easy. Need a value everywhere? Make it public static. Need configuration? Stuff it in a global map. Need a database connection? Singleton. Each decision feels harmless in isolation, but together they create invisible coupling — every piece of code that touches the global is silently coupled to every other piece, with no interface or contract mediating the relationship.</p>
+
+<p>Fowler introduced this smell in his second edition as a distinct concern, separate from (but related to) Large Class and Feature Envy, because modern codebases have grown large enough that uncontrolled global state is one of the most persistent sources of hard-to-reproduce bugs.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">AppConfig</span> {
+    <span class="kw">public static</span> <span class="type">String</span> databaseUrl = <span class="str">"jdbc:mysql://localhost:3306/prod"</span>;
+    <span class="kw">public static int</span> maxRetries = <span class="num">3</span>;
+    <span class="kw">public static boolean</span> debugMode = <span class="kw">false</span>;
+    <span class="kw">public static</span> <span class="type">String</span> currentUserId = <span class="kw">null</span>;
+    <span class="kw">public static</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; cache = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderService</span> {
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (<span class="type">AppConfig</span>.debugMode) {
+            <span class="type">System</span>.out.println(<span class="str">"Placing order: "</span> + order.getId());
+        }
+        <span class="cmt">// uses AppConfig.databaseUrl to connect</span>
+        <span class="cmt">// uses AppConfig.maxRetries for retry logic</span>
+        <span class="cmt">// writes to AppConfig.cache</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">ReportService</span> {
+    <span class="kw">public void</span> <span class="fn">generateReport</span>() {
+        <span class="cmt">// reads AppConfig.currentUserId — who set this? when?</span>
+        <span class="cmt">// reads AppConfig.cache — is the data stale?</span>
+        <span class="cmt">// changes AppConfig.debugMode for verbose logging during report generation</span>
+        <span class="type">AppConfig</span>.debugMode = <span class="kw">true</span>;
+        <span class="cmt">// ... generate report ...</span>
+        <span class="type">AppConfig</span>.debugMode = <span class="kw">false</span>;
+        <span class="cmt">// if an exception fires between these two lines, debugMode stays true forever</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">AuthService</span> {
+    <span class="kw">public void</span> <span class="fn">login</span>(<span class="type">String</span> userId) {
+        <span class="type">AppConfig</span>.currentUserId = userId;
+        <span class="cmt">// every class in the system now silently "knows" who's logged in</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">logout</span>() {
+        <span class="type">AppConfig</span>.currentUserId = <span class="kw">null</span>;
+        <span class="type">AppConfig</span>.cache.clear(); <span class="cmt">// wipes cache for ALL services, not just auth</span>
+    }
+}</code></pre>
+
+<p>Any class can read or write any field at any time. <code>ReportService</code> temporarily flips <code>debugMode</code> — but if it throws, the flag stays flipped. <code>AuthService.logout()</code> clears the entire cache, blindly affecting <code>OrderService</code>. <code>currentUserId</code> is set in one place and read in dozens, with no guarantee it's set before it's read. Testing any of these services in isolation is nearly impossible because they all depend on — and mutate — shared global state.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Encapsulation.</strong> Global data is the antithesis of encapsulation — there is no boundary, no controlled access, no contract. Any code can change it, which means no code can trust it. You cannot reason locally about behavior because any method anywhere might have silently changed the state you depend on.</p>
+
+<p>It also undermines <strong>testability</strong>: you can't test a class in isolation if it reads and writes shared mutable state. Tests become order-dependent, flaky, and hard to parallelize.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The primary refactoring is <strong>Encapsulate Variable</strong>: wrap the global data behind methods that control access, then progressively restrict who can call those methods.</p>
+
+<p class="before-after">Step 1 — wrap the raw fields behind getters/setters:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AppConfig</span> {
+    <span class="kw">private static</span> <span class="type">String</span> databaseUrl = <span class="str">"jdbc:mysql://localhost:3306/prod"</span>;
+    <span class="kw">private static int</span> maxRetries = <span class="num">3</span>;
+    <span class="kw">private static boolean</span> debugMode = <span class="kw">false</span>;
+
+    <span class="kw">public static</span> <span class="type">String</span> <span class="fn">getDatabaseUrl</span>() { <span class="kw">return</span> databaseUrl; }
+    <span class="kw">public static int</span> <span class="fn">getMaxRetries</span>() { <span class="kw">return</span> maxRetries; }
+    <span class="kw">public static boolean</span> <span class="fn">isDebugMode</span>() { <span class="kw">return</span> debugMode; }
+
+    <span class="kw">public static void</span> <span class="fn">setDebugMode</span>(<span class="kw">boolean</span> mode) {
+        debugMode = mode;
+    }
+}</code></pre>
+
+<p>This alone is a small improvement — you now have a single place to add logging, validation, or breakpoints when the value changes. But the data is still effectively global.</p>
+
+<p class="before-after">Step 2 — replace the static singleton with an injected dependency:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AppConfig</span> {
+    <span class="kw">private final</span> <span class="type">String</span> databaseUrl;
+    <span class="kw">private final int</span> maxRetries;
+    <span class="kw">private final boolean</span> debugMode;
+
+    <span class="kw">public</span> <span class="fn">AppConfig</span>(<span class="type">String</span> databaseUrl, <span class="kw">int</span> maxRetries, <span class="kw">boolean</span> debugMode) {
+        <span class="kw">this</span>.databaseUrl = databaseUrl;
+        <span class="kw">this</span>.maxRetries = maxRetries;
+        <span class="kw">this</span>.debugMode = debugMode;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getDatabaseUrl</span>() { <span class="kw">return</span> databaseUrl; }
+    <span class="kw">public int</span> <span class="fn">getMaxRetries</span>() { <span class="kw">return</span> maxRetries; }
+    <span class="kw">public boolean</span> <span class="fn">isDebugMode</span>() { <span class="kw">return</span> debugMode; }
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderService</span> {
+    <span class="kw">private final</span> <span class="type">AppConfig</span> config;
+
+    <span class="kw">public</span> <span class="fn">OrderService</span>(<span class="type">AppConfig</span> config) {
+        <span class="kw">this</span>.config = config;
+    }
+
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (config.isDebugMode()) {
+            <span class="type">System</span>.out.println(<span class="str">"Placing order: "</span> + order.getId());
+        }
+        <span class="cmt">// ...</span>
+    }
+}</code></pre>
+
+<p>Now <code>AppConfig</code> is immutable. Each service receives its configuration through the constructor — explicit, testable, and impossible to silently mutate from another class.</p>
+
+<p class="before-after">Step 3 — split unrelated concerns into separate objects:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">DatabaseConfig</span> {
+    <span class="kw">private final</span> <span class="type">String</span> url;
+    <span class="kw">private final int</span> maxRetries;
+    <span class="cmt">// constructor, getters...</span>
+}
+
+<span class="kw">public class</span> <span class="type">UserSession</span> {
+    <span class="kw">private</span> <span class="type">String</span> currentUserId;
+
+    <span class="kw">public void</span> <span class="fn">login</span>(<span class="type">String</span> userId) { <span class="kw">this</span>.currentUserId = userId; }
+    <span class="kw">public void</span> <span class="fn">logout</span>() { <span class="kw">this</span>.currentUserId = <span class="kw">null</span>; }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getCurrentUserId</span>() { <span class="kw">return</span> currentUserId; }
+}
+
+<span class="kw">public class</span> <span class="type">CacheManager</span> {
+    <span class="kw">private final</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; cache = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+
+    <span class="kw">public void</span> <span class="fn">put</span>(<span class="type">String</span> key, <span class="type">Object</span> value) { cache.put(key, value); }
+    <span class="kw">public</span> <span class="type">Object</span> <span class="fn">get</span>(<span class="type">String</span> key) { <span class="kw">return</span> cache.get(key); }
+    <span class="kw">public void</span> <span class="fn">clearFor</span>(<span class="type">String</span> namespace) {
+        cache.keySet().removeIf(k -&gt; k.startsWith(namespace + <span class="str">":"</span>));
+    }
+}</code></pre>
+
+<p>Each service receives only what it needs:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderService</span> {
+    <span class="kw">private final</span> <span class="type">DatabaseConfig</span> dbConfig;
+    <span class="kw">private final</span> <span class="type">CacheManager</span> cache;
+
+    <span class="kw">public</span> <span class="fn">OrderService</span>(<span class="type">DatabaseConfig</span> dbConfig, <span class="type">CacheManager</span> cache) {
+        <span class="kw">this</span>.dbConfig = dbConfig;
+        <span class="kw">this</span>.cache = cache;
+    }
+    <span class="cmt">// ...</span>
+}
+
+<span class="kw">public class</span> <span class="type">AuthService</span> {
+    <span class="kw">private final</span> <span class="type">UserSession</span> session;
+    <span class="kw">private final</span> <span class="type">CacheManager</span> cache;
+
+    <span class="kw">public</span> <span class="fn">AuthService</span>(<span class="type">UserSession</span> session, <span class="type">CacheManager</span> cache) {
+        <span class="kw">this</span>.session = session;
+        <span class="kw">this</span>.cache = cache;
+    }
+
+    <span class="kw">public void</span> <span class="fn">logout</span>() {
+        session.logout();
+        cache.clearFor(<span class="str">"auth"</span>); <span class="cmt">// only clears auth-related cache</span>
+    }
+}</code></pre>
+
+<p>The god-object <code>AppConfig</code> is gone. Each dependency is explicit, scoped, and testable. <code>AuthService.logout()</code> can no longer accidentally wipe <code>OrderService</code>'s cache. And you can test <code>OrderService</code> by injecting a mock <code>DatabaseConfig</code> without touching any global state.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

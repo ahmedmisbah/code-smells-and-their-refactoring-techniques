@@ -1,0 +1,3001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refactoring Techniques — Code Smell Reference</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; }
+  .subtitle { color: #9ba3c2; font-size: 1.05rem; margin-bottom: 2rem; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+
+  .stats { display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+  .stat-box { background: #111842; border: 1px solid #1e2a5e; border-radius: 8px; padding: 0.8rem 1.2rem; text-align: center; flex: 1; min-width: 100px; }
+  .stat-num { color: #c77dff; font-size: 1.8rem; font-weight: 700; line-height: 1.2; }
+  .stat-label { color: #9ba3c2; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .filter-section { background: #111842; border: 1px solid #1e2a5e; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1.5rem; }
+  .filter-group { margin-bottom: 0.8rem; }
+  .filter-group:last-child { margin-bottom: 0; }
+  .filter-label { color: #9ba3c2; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; display: block; }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .filter-btn { background: #0a0f2e; color: #9ba3c2; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.35rem 0.75rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+  .filter-btn:hover { border-color: #6b9fff; color: #6b9fff; }
+  .filter-btn.active { background: #1e2a5e; color: #FFFFFF; border-color: #6b9fff; }
+
+  .results-count { color: #9ba3c2; font-size: 0.85rem; margin-bottom: 1rem; }
+
+  .technique-card { background: #111842; border: 1px solid #1e2a5e; border-radius: 8px; padding: 1.2rem 1.4rem; margin-bottom: 0.8rem; transition: border-color 0.2s; }
+  .technique-card:hover { border-color: #c77dff; }
+  .technique-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+  .technique-name { color: #FFFFFF; font-size: 1.05rem; font-weight: 600; }
+  .technique-count { color: #c77dff; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+
+  .smell-pills { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .smell-link { display: inline-block; background: #0a0f2e; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.2rem 0.6rem; font-size: 0.8rem; color: #6b9fff; text-decoration: none; transition: all 0.2s; }
+  .smell-link:hover { background: #1e2a5e; border-color: #6b9fff; color: #FFFFFF; }
+  .no-smells { color: #555a7a; font-size: 0.8rem; font-style: italic; }
+
+  /* Accordion */
+  .accordion-toggle { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.7rem; padding: 0.3rem 0; color: #6b9fff; font-size: 0.8rem; cursor: pointer; user-select: none; transition: color 0.2s; }
+  .accordion-toggle:hover { color: #c77dff; }
+  .accordion-icon { font-size: 0.6rem; transition: transform 0.25s; display: inline-block; }
+  .accordion-toggle.open .accordion-icon { transform: rotate(90deg); }
+  .accordion-body { display: none; margin-top: 0.8rem; padding-top: 0.8rem; border-top: 1px solid #1e2a5e; }
+  .accordion-body.open { display: block; }
+  .ba-label { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; margin-top: 0.8rem; }
+  .ba-label:first-child { margin-top: 0; }
+  .before-label { color: #ff7b7b; }
+  .after-label { color: #7bffb0; }
+  pre { background: #0d1233; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 0.6rem; font-size: 0.82rem; line-height: 1.5; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.82rem; }
+  pre code { color: #d4daf0; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">&larr; Back to all Code Smells</a>
+
+<h1>Refactoring Techniques</h1>
+<p class="subtitle">All refactoring techniques mapped to the code smells they fix.</p>
+
+<div class="stats">
+  <div class="stat-box"><div class="stat-num">110</div><div class="stat-label">Techniques</div></div>
+  <div class="stat-box"><div class="stat-num">34</div><div class="stat-label">Code Smells</div></div>
+  <div class="stat-box"><div class="stat-num">50</div><div class="stat-label">With Smells</div></div>
+  <div class="stat-box"><div class="stat-num">60</div><div class="stat-label">Without Smells</div></div>
+</div>
+
+<div class="filter-section">
+  <div class="filter-group">
+    <span class="filter-label">Mapping</span>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setMapping('all', this)">All</button>
+      <button class="filter-btn" onclick="setMapping('yes', this)">Has smells</button>
+      <button class="filter-btn" onclick="setMapping('no', this)">No smells</button>
+    </div>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">Smell Category</span>
+    <div class="filter-row" id="cat-filters">
+      <button class="filter-btn active" data-cat="all" onclick="toggleCat('all', this)">All</button>
+      <button class="filter-btn" data-cat="Bloaters" onclick="toggleCat('Bloaters', this)">Bloaters</button>
+  <button class="filter-btn" data-cat="Change Preventers" onclick="toggleCat('Change Preventers', this)">Change Preventers</button>
+  <button class="filter-btn" data-cat="Couplers" onclick="toggleCat('Couplers', this)">Couplers</button>
+  <button class="filter-btn" data-cat="Dispensables" onclick="toggleCat('Dispensables', this)">Dispensables</button>
+  <button class="filter-btn" data-cat="Naming" onclick="toggleCat('Naming', this)">Naming</button>
+  <button class="filter-btn" data-cat="OO Abusers" onclick="toggleCat('OO Abusers', this)">OO Abusers</button>
+  <button class="filter-btn" data-cat="Side Effect" onclick="toggleCat('Side Effect', this)">Side Effect</button>
+    </div>
+  </div>
+</div>
+
+<div class="results-count" id="results-count"></div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters Change Preventers Couplers Dispensables OO Abusers" id="extract-class">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Class</h3>
+    <span class="technique-count">7 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="05-data-clumps.html" class="smell-link" data-cat="Bloaters">Data Clumps</a>
+    <a href="15-divergent-change.html" class="smell-link" data-cat="Change Preventers">Divergent Change</a>
+    <a href="20-duplicated-code.html" class="smell-link" data-cat="Dispensables">Duplicated Code</a>
+    <a href="30-feature-envy.html" class="smell-link" data-cat="Couplers">Feature Envy</a>
+    <a href="29-inappropriate-intimacy.html" class="smell-link" data-cat="Couplers">Inappropriate Intimacy</a>
+    <a href="02-large-class.html" class="smell-link" data-cat="Bloaters">Large Class</a>
+    <a href="12-temporary-field.html" class="smell-link" data-cat="OO Abusers">Temporary Field</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers Couplers Dispensables OO Abusers" id="move-method-move-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Method / Move Function</h3>
+    <span class="technique-count">5 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="11-alternative-classes-with-different-interfaces.html" class="smell-link" data-cat="OO Abusers">Alternative Classes with Different Interfaces</a>
+    <a href="24-data-class.html" class="smell-link" data-cat="Dispensables">Data Class</a>
+    <a href="30-feature-envy.html" class="smell-link" data-cat="Couplers">Feature Envy</a>
+    <a href="29-inappropriate-intimacy.html" class="smell-link" data-cat="Couplers">Inappropriate Intimacy</a>
+    <a href="16-shotgun-surgery.html" class="smell-link" data-cat="Change Preventers">Shotgun Surgery</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters Dispensables Naming" id="extract-method-extract-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Method / Extract Function</h3>
+    <span class="technique-count">4 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="23-comments.html" class="smell-link" data-cat="Dispensables">Comments</a>
+    <a href="20-duplicated-code.html" class="smell-link" data-cat="Dispensables">Duplicated Code</a>
+    <a href="01-long-method.html" class="smell-link" data-cat="Bloaters">Long Method</a>
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="introduce-parameter-object">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Parameter Object</h3>
+    <span class="technique-count">4 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="05-data-clumps.html" class="smell-link" data-cat="Bloaters">Data Clumps</a>
+    <a href="01-long-method.html" class="smell-link" data-cat="Bloaters">Long Method</a>
+    <a href="04-long-parameter-list.html" class="smell-link" data-cat="Bloaters">Long Parameter List</a>
+    <a href="03-primitive-obsession.html" class="smell-link" data-cat="Bloaters">Primitive Obsession</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables Naming OO Abusers" id="rename-method-change-function-declaration">
+  <div class="technique-header">
+    <h3 class="technique-name">Rename Method / Change Function Declaration</h3>
+    <span class="technique-count">4 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="11-alternative-classes-with-different-interfaces.html" class="smell-link" data-cat="OO Abusers">Alternative Classes with Different Interfaces</a>
+    <a href="23-comments.html" class="smell-link" data-cat="Dispensables">Comments</a>
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+    <a href="26-mysterious-name.html" class="smell-link" data-cat="Naming">Mysterious Name</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Couplers" id="hide-delegate">
+  <div class="technique-header">
+    <h3 class="technique-name">Hide Delegate</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="29-inappropriate-intimacy.html" class="smell-link" data-cat="Couplers">Inappropriate Intimacy</a>
+    <a href="31-message-chains.html" class="smell-link" data-cat="Couplers">Message Chains</a>
+    <a href="32-middle-man.html" class="smell-link" data-cat="Couplers">Middle Man</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="preserve-whole-object">
+  <div class="technique-header">
+    <h3 class="technique-name">Preserve Whole Object</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="05-data-clumps.html" class="smell-link" data-cat="Bloaters">Data Clumps</a>
+    <a href="01-long-method.html" class="smell-link" data-cat="Bloaters">Long Method</a>
+    <a href="04-long-parameter-list.html" class="smell-link" data-cat="Bloaters">Long Parameter List</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables Naming" id="rename-variable">
+  <div class="technique-header">
+    <h3 class="technique-name">Rename Variable</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="23-comments.html" class="smell-link" data-cat="Dispensables">Comments</a>
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+    <a href="26-mysterious-name.html" class="smell-link" data-cat="Naming">Mysterious Name</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="replace-conditional-logic-with-strategy">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Conditional Logic with Strategy</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+    <a href="14-conditional-complexity.html" class="smell-link" data-cat="OO Abusers">Conditional Complexity</a>
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="replace-type-code-with-state-strategy">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Type Code with State/Strategy</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="14-conditional-complexity.html" class="smell-link" data-cat="OO Abusers">Conditional Complexity</a>
+    <a href="03-primitive-obsession.html" class="smell-link" data-cat="Bloaters">Primitive Obsession</a>
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters Naming Side Effect" id="separate-query-from-modifier-separate-commands-from-queries">
+  <div class="technique-header">
+    <h3 class="technique-name">Separate Query from Modifier / Separate Commands from Queries</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+    <a href="08-mutable-data.html" class="smell-link" data-cat="Bloaters">Mutable Data</a>
+    <a href="19-side-effect.html" class="smell-link" data-cat="Side Effect">Side Effect</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="strategy-pattern">
+  <div class="technique-header">
+    <h3 class="technique-name">Strategy Pattern</h3>
+    <span class="technique-count">3 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+    <a href="14-conditional-complexity.html" class="smell-link" data-cat="OO Abusers">Conditional Complexity</a>
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters Change Preventers" id="bridge-pattern">
+  <div class="technique-header">
+    <h3 class="technique-name">Bridge Pattern</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+    <a href="18-parallel-inheritance-hierarchies.html" class="smell-link" data-cat="Change Preventers">Parallel Inheritance Hierarchies</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables" id="collapse-hierarchy">
+  <div class="technique-header">
+    <h3 class="technique-name">Collapse Hierarchy</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="21-lazy-class.html" class="smell-link" data-cat="Dispensables">Lazy Class</a>
+    <a href="22-speculative-generality.html" class="smell-link" data-cat="Dispensables">Speculative Generality</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Naming OO Abusers" id="decompose-conditional">
+  <div class="technique-header">
+    <h3 class="technique-name">Decompose Conditional</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="14-conditional-complexity.html" class="smell-link" data-cat="OO Abusers">Conditional Complexity</a>
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="extract-interface">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Interface</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="11-alternative-classes-with-different-interfaces.html" class="smell-link" data-cat="OO Abusers">Alternative Classes with Different Interfaces</a>
+    <a href="02-large-class.html" class="smell-link" data-cat="Bloaters">Large Class</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers Dispensables" id="inline-class">
+  <div class="technique-header">
+    <h3 class="technique-name">Inline Class</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="21-lazy-class.html" class="smell-link" data-cat="Dispensables">Lazy Class</a>
+    <a href="16-shotgun-surgery.html" class="smell-link" data-cat="Change Preventers">Shotgun Surgery</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Naming OO Abusers" id="replace-conditional-with-polymorphism">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Conditional with Polymorphism</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers Naming" id="replace-constructors-with-creation-methods">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Constructors with Creation Methods</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="28-lost-intent.html" class="smell-link" data-cat="Naming">Lost Intent</a>
+    <a href="17-solution-sprawl.html" class="smell-link" data-cat="Change Preventers">Solution Sprawl</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="replace-method-with-method-object">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Method with Method Object</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="01-long-method.html" class="smell-link" data-cat="Bloaters">Long Method</a>
+    <a href="12-temporary-field.html" class="smell-link" data-cat="OO Abusers">Temporary Field</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters OO Abusers" id="replace-type-code-with-subclasses">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Type Code with Subclasses</h3>
+    <span class="technique-count">2 smells</span>
+  </div>
+  <div class="smell-pills">
+    <a href="03-primitive-obsession.html" class="smell-link" data-cat="Bloaters">Primitive Obsession</a>
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="builder-pattern">
+  <div class="technique-header">
+    <h3 class="technique-name">Builder Pattern</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="04-long-parameter-list.html" class="smell-link" data-cat="Bloaters">Long Parameter List</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="decorator-pattern">
+  <div class="technique-header">
+    <h3 class="technique-name">Decorator Pattern</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Couplers" id="encapsulate-classes-with-factory">
+  <div class="technique-header">
+    <h3 class="technique-name">Encapsulate Classes with Factory</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="33-indecent-exposure.html" class="smell-link" data-cat="Couplers">Indecent Exposure</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="encapsulate-variable-encapsulate-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Encapsulate Variable / Encapsulate Field</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="07-global-data.html" class="smell-link" data-cat="Bloaters">Global Data</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="extract-subclass">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Subclass</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="02-large-class.html" class="smell-link" data-cat="Bloaters">Large Class</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables" id="form-template-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Form Template Method</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="20-duplicated-code.html" class="smell-link" data-cat="Dispensables">Duplicated Code</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Couplers" id="introduce-foreign-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Foreign Method</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="34-incomplete-library-class.html" class="smell-link" data-cat="Couplers">Incomplete Library Class</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Couplers" id="introduce-local-extension">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Local Extension</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="34-incomplete-library-class.html" class="smell-link" data-cat="Couplers">Incomplete Library Class</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="introduce-null-object-introduce-special-case">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Null Object / Introduce Special Case</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="12-temporary-field.html" class="smell-link" data-cat="OO Abusers">Temporary Field</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers" id="move-accumulation-to-visitor">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Accumulation to Visitor</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="18-parallel-inheritance-hierarchies.html" class="smell-link" data-cat="Change Preventers">Parallel Inheritance Hierarchies</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers" id="move-creation-knowledge-to-factory">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Creation Knowledge to Factory</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="17-solution-sprawl.html" class="smell-link" data-cat="Change Preventers">Solution Sprawl</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="move-embellishment-to-decorator">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Embellishment to Decorator</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers" id="move-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Field</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="16-shotgun-surgery.html" class="smell-link" data-cat="Change Preventers">Shotgun Surgery</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables" id="pull-up-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Pull Up Method</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="20-duplicated-code.html" class="smell-link" data-cat="Dispensables">Duplicated Code</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="push-down-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Push Down Field</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="13-refused-bequest.html" class="smell-link" data-cat="OO Abusers">Refused Bequest</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="push-down-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Push Down Method</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="13-refused-bequest.html" class="smell-link" data-cat="OO Abusers">Refused Bequest</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Dispensables" id="remove-dead-code">
+  <div class="technique-header">
+    <h3 class="technique-name">Remove Dead Code</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="25-dead-code.html" class="smell-link" data-cat="Dispensables">Dead Code</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Couplers" id="remove-middle-man">
+  <div class="technique-header">
+    <h3 class="technique-name">Remove Middle Man</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="32-middle-man.html" class="smell-link" data-cat="Couplers">Middle Man</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="replace-conditional-with-map-lookup">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Conditional with Map Lookup</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="10-switch-statements.html" class="smell-link" data-cat="OO Abusers">Switch Statements</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-implicit-language-with-interpreter">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Implicit Language with Interpreter</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="06-combinatorial-explosion.html" class="smell-link" data-cat="Bloaters">Combinatorial Explosion</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="replace-inheritance-with-delegation">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Inheritance with Delegation</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="13-refused-bequest.html" class="smell-link" data-cat="OO Abusers">Refused Bequest</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-loop-with-pipeline">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Loop with Pipeline</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="09-loops.html" class="smell-link" data-cat="Bloaters">Loops</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="OO Abusers" id="replace-nested-conditional-with-guard-clauses">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Nested Conditional with Guard Clauses</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="14-conditional-complexity.html" class="smell-link" data-cat="OO Abusers">Conditional Complexity</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-parameter-with-method-call-replace-parameter-with-query">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Parameter with Method Call / Replace Parameter with Query</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="04-long-parameter-list.html" class="smell-link" data-cat="Bloaters">Long Parameter List</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-primitive-with-object-replace-data-value-with-object">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Primitive with Object / Replace Data Value with Object</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="03-primitive-obsession.html" class="smell-link" data-cat="Bloaters">Primitive Obsession</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-temp-with-query">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Temp with Query</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="01-long-method.html" class="smell-link" data-cat="Bloaters">Long Method</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Bloaters" id="replace-type-code-with-class">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Type Code with Class</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="03-primitive-obsession.html" class="smell-link" data-cat="Bloaters">Primitive Obsession</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Naming" id="substitute-algorithm">
+  <div class="technique-header">
+    <h3 class="technique-name">Substitute Algorithm</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="27-oddball-solution.html" class="smell-link" data-cat="Naming">Oddball Solution</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="yes" data-categories="Change Preventers" id="visitor-pattern">
+  <div class="technique-header">
+    <h3 class="technique-name">Visitor Pattern</h3>
+    <span class="technique-count">1 smell</span>
+  </div>
+  <div class="smell-pills">
+    <a href="18-parallel-inheritance-hierarchies.html" class="smell-link" data-cat="Change Preventers">Parallel Inheritance Hierarchies</a>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="chain-constructors">
+  <div class="technique-header">
+    <h3 class="technique-name">Chain Constructors</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Server {
+    <span class="kw">private</span> <span class="kw">int</span> port;
+    <span class="kw">private</span> <span class="type">String</span> host;
+    <span class="kw">private</span> <span class="kw">int</span> maxConnections;
+
+    <span class="kw">public</span> Server() {
+        <span class="kw">this</span>.port = 8080;
+        <span class="kw">this</span>.host = <span class="str">&quot;localhost&quot;</span>;
+        <span class="kw">this</span>.maxConnections = 100;
+    }
+
+    <span class="kw">public</span> Server(<span class="kw">int</span> port) {
+        <span class="kw">this</span>.port = port;
+        <span class="kw">this</span>.host = <span class="str">&quot;localhost&quot;</span>;
+        <span class="kw">this</span>.maxConnections = 100;
+    }
+
+    <span class="kw">public</span> Server(<span class="kw">int</span> port, <span class="type">String</span> host) {
+        <span class="kw">this</span>.port = port;
+        <span class="kw">this</span>.host = host;
+        <span class="kw">this</span>.maxConnections = 100;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Server {
+    <span class="kw">private</span> <span class="kw">int</span> port;
+    <span class="kw">private</span> <span class="type">String</span> host;
+    <span class="kw">private</span> <span class="kw">int</span> maxConnections;
+
+    <span class="kw">public</span> Server() {
+        <span class="kw">this</span>(8080);
+    }
+
+    <span class="kw">public</span> Server(<span class="kw">int</span> port) {
+        <span class="kw">this</span>(port, <span class="str">&quot;localhost&quot;</span>);
+    }
+
+    <span class="kw">public</span> Server(<span class="kw">int</span> port, <span class="type">String</span> host) {
+        <span class="kw">this</span>(port, host, 100);
+    }
+
+    <span class="kw">public</span> Server(<span class="kw">int</span> port, <span class="type">String</span> host, <span class="kw">int</span> maxConnections) {
+        <span class="kw">this</span>.port = port;
+        <span class="kw">this</span>.host = host;
+        <span class="kw">this</span>.maxConnections = maxConnections;
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="change-reference-to-value">
+  <div class="technique-header">
+    <h3 class="technique-name">Change Reference to Value</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Money</span> {
+    <span class="kw">private</span> <span class="kw">double</span> amount;
+    <span class="kw">private</span> <span class="type">String</span> currency;
+
+    <span class="kw">public</span> <span class="kw">void</span> setAmount(<span class="kw">double</span> amount) {
+        <span class="kw">this</span>.amount = amount;
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> setCurrency(<span class="type">String</span> currency) {
+        <span class="kw">this</span>.currency = currency;
+    }
+}
+<span class="cmt">// usage: money.setAmount(50); — mutates in place</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Money</span> {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">double</span> amount;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">String</span> currency;
+
+    <span class="kw">public</span> <span class="type">Money</span>(<span class="kw">double</span> amount, <span class="type">String</span> currency) {
+        <span class="kw">this</span>.amount = amount;
+        <span class="kw">this</span>.currency = currency;
+    }
+
+    <span class="kw">public</span> <span class="type">Money</span> withAmount(<span class="kw">double</span> amount) {
+        <span class="kw">return</span> <span class="kw">new</span> <span class="type">Money</span>(amount, <span class="kw">this</span>.currency);
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> equals(<span class="type">Object</span> o) {
+        <span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="type">Money</span>)) <span class="kw">return</span> <span class="kw">false</span>;
+        <span class="type">Money</span> m = (<span class="type">Money</span>) o;
+        <span class="kw">return</span> amount == m.amount &amp;&amp; currency.equals(m.currency);
+    }
+}
+<span class="cmt">// usage: money = new Money(50, &quot;USD&quot;); — immutable value</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="change-value-to-reference">
+  <div class="technique-header">
+    <h3 class="technique-name">Change Value to Reference</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Each Order creates its own Customer copy</span>
+<span class="kw">public</span> <span class="kw">class</span> Order {
+    <span class="kw">private</span> Customer customer;
+
+    <span class="kw">public</span> Order(<span class="type">String</span> customerName) {
+        <span class="kw">this</span>.customer = <span class="kw">new</span> Customer(customerName);
+    }
+}
+<span class="cmt">// Two orders for &quot;Alice&quot; have different Customer objects</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Orders share a single Customer reference</span>
+<span class="kw">public</span> <span class="kw">class</span> Order {
+    <span class="kw">private</span> Customer customer;
+
+    <span class="kw">public</span> Order(<span class="type">String</span> customerName) {
+        <span class="kw">this</span>.customer = CustomerRegistry.get(customerName);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> CustomerRegistry {
+    <span class="kw">private</span> <span class="kw">static</span> <span class="type">Map</span>&lt;<span class="type">String</span>, Customer&gt; customers = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">static</span> Customer get(<span class="type">String</span> name) {
+        <span class="kw">return</span> customers.computeIfAbsent(name, Customer::<span class="kw">new</span>);
+    }
+}
+<span class="cmt">// Two orders for &quot;Alice&quot; share the same Customer</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="combine-functions-into-class">
+  <div class="technique-header">
+    <h3 class="technique-name">Combine Functions into Class</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Loose functions operating on the same data</span>
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> baseRate(<span class="kw">int</span> month, <span class="kw">int</span> year) {
+    <span class="kw">return</span> rates.get(month + <span class="str">&quot;-&quot;</span> + year);
+}
+
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> taxableCharge(<span class="kw">double</span> base) {
+    <span class="kw">return</span> Math.max(0, base - taxThreshold());
+}
+
+<span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> calculateBill(<span class="kw">int</span> month, <span class="kw">int</span> year) {
+    <span class="kw">double</span> base = baseRate(month, year);
+    <span class="kw">return</span> base + taxableCharge(base);
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Reading {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">int</span> month;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">int</span> year;
+
+    <span class="kw">public</span> Reading(<span class="kw">int</span> month, <span class="kw">int</span> year) {
+        <span class="kw">this</span>.month = month;
+        <span class="kw">this</span>.year = year;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> baseRate() {
+        <span class="kw">return</span> rates.get(month + <span class="str">&quot;-&quot;</span> + year);
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> taxableCharge() {
+        <span class="kw">return</span> Math.max(0, baseRate() - taxThreshold());
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> calculateBill() {
+        <span class="kw">return</span> baseRate() + taxableCharge();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="combine-functions-into-transform">
+  <div class="technique-header">
+    <h3 class="technique-name">Combine Functions into Transform</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Each caller recalculates derived values</span>
+<span class="kw">double</span> base = reading.quantity * reading.rate;
+<span class="kw">double</span> tax = Math.max(0, base - taxThreshold) * taxRate;
+<span class="kw">double</span> total = base + tax;
+
+<span class="cmt">// ... in another method, same logic repeated</span>
+<span class="kw">double</span> base2 = reading.quantity * reading.rate;
+<span class="kw">double</span> tax2 = Math.max(0, base2 - taxThreshold) * taxRate;</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> EnrichedReading {
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">double</span> quantity;
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">double</span> rate;
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">double</span> baseCharge;
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">double</span> tax;
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">double</span> total;
+
+    <span class="kw">public</span> <span class="kw">static</span> EnrichedReading enrich(Reading reading) {
+        <span class="kw">double</span> base = reading.quantity * reading.rate;
+        <span class="kw">double</span> tax = Math.max(0, base - taxThreshold) * taxRate;
+        <span class="kw">return</span> <span class="kw">new</span> EnrichedReading(
+            reading.quantity, reading.rate, base, tax, base + tax);
+    }
+}
+<span class="cmt">// All callers use: EnrichedReading r = EnrichedReading.enrich(raw);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="compose-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Compose Method</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> addEmployee(<span class="type">List</span>&lt;Employee&gt; employees, <span class="type">String</span> name,
+                        <span class="type">String</span> role, <span class="kw">double</span> salary) {
+    <span class="kw">boolean</span> valid = <span class="kw">true</span>;
+    <span class="kw">if</span> (name == <span class="kw">null</span> || name.trim().isEmpty()) valid = <span class="kw">false</span>;
+    <span class="kw">if</span> (salary &lt; 0) valid = <span class="kw">false</span>;
+    <span class="kw">if</span> (role == <span class="kw">null</span>) valid = <span class="kw">false</span>;
+    <span class="kw">if</span> (!valid) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>();
+    Employee emp = <span class="kw">new</span> Employee();
+    emp.setName(name.trim());
+    emp.setRole(role);
+    emp.setSalary(salary);
+    emp.setStartDate(<span class="type">LocalDate</span>.now());
+    emp.setId(generateId());
+    employees.add(emp);
+    auditLog.record(<span class="str">&quot;Added &quot;</span> + name);
+    notifyHR(emp);
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> addEmployee(<span class="type">List</span>&lt;Employee&gt; employees, <span class="type">String</span> name,
+                        <span class="type">String</span> role, <span class="kw">double</span> salary) {
+    validate(name, role, salary);
+    Employee emp = createEmployee(name, role, salary);
+    employees.add(emp);
+    notifyNewHire(emp);
+}
+
+<span class="kw">private</span> <span class="kw">void</span> validate(<span class="type">String</span> name, <span class="type">String</span> role, <span class="kw">double</span> salary) {
+    <span class="kw">if</span> (name == <span class="kw">null</span> || name.trim().isEmpty())
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>(<span class="str">&quot;Invalid name&quot;</span>);
+    <span class="kw">if</span> (role == <span class="kw">null</span>) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>(<span class="str">&quot;Invalid role&quot;</span>);
+    <span class="kw">if</span> (salary &lt; 0) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>(<span class="str">&quot;Invalid salary&quot;</span>);
+}
+
+<span class="kw">private</span> Employee createEmployee(<span class="type">String</span> name, <span class="type">String</span> role, <span class="kw">double</span> salary) {
+    Employee emp = <span class="kw">new</span> Employee();
+    emp.setName(name.trim());
+    emp.setRole(role);
+    emp.setSalary(salary);
+    emp.setStartDate(<span class="type">LocalDate</span>.now());
+    emp.setId(generateId());
+    <span class="kw">return</span> emp;
+}
+
+<span class="kw">private</span> <span class="kw">void</span> notifyNewHire(Employee emp) {
+    auditLog.record(<span class="str">&quot;Added &quot;</span> + emp.getName());
+    notifyHR(emp);
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="consolidate-conditional-expression">
+  <div class="technique-header">
+    <h3 class="technique-name">Consolidate Conditional Expression</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> disabilityAmount(Employee emp) {
+    <span class="kw">if</span> (emp.getSeniority() &lt; 2) <span class="kw">return</span> 0;
+    <span class="kw">if</span> (emp.getMonthsDisabled() &gt; 12) <span class="kw">return</span> 0;
+    <span class="kw">if</span> (emp.isPartTime()) <span class="kw">return</span> 0;
+    <span class="cmt">// compute disability amount</span>
+    <span class="kw">return</span> emp.getSalary() * 0.6;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> disabilityAmount(Employee emp) {
+    <span class="kw">if</span> (isNotEligibleForDisability(emp)) <span class="kw">return</span> 0;
+    <span class="kw">return</span> emp.getSalary() * 0.6;
+}
+
+<span class="kw">private</span> <span class="kw">boolean</span> isNotEligibleForDisability(Employee emp) {
+    <span class="kw">return</span> emp.getSeniority() &lt; 2
+        || emp.getMonthsDisabled() &gt; 12
+        || emp.isPartTime();
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="consolidate-duplicate-conditional-fragments">
+  <div class="technique-header">
+    <h3 class="technique-name">Consolidate Duplicate Conditional Fragments</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculatePrice(<span class="kw">boolean</span> isVip) {
+    <span class="kw">double</span> price;
+    <span class="kw">if</span> (isVip) {
+        price = basePrice * 0.85;
+        applyLoyaltyPoints(price);
+        sendConfirmation();
+    } <span class="kw">else</span> {
+        price = basePrice * 0.95;
+        applyLoyaltyPoints(price);
+        sendConfirmation();
+    }
+    <span class="kw">return</span> price;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculatePrice(<span class="kw">boolean</span> isVip) {
+    <span class="kw">double</span> price;
+    <span class="kw">if</span> (isVip) {
+        price = basePrice * 0.85;
+    } <span class="kw">else</span> {
+        price = basePrice * 0.95;
+    }
+    applyLoyaltyPoints(price);
+    sendConfirmation();
+    <span class="kw">return</span> price;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="duplicate-observed-data">
+  <div class="technique-header">
+    <h3 class="technique-name">Duplicate Observed Data</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// GUI class holds both display and domain logic</span>
+<span class="kw">public</span> <span class="kw">class</span> IntervalWindow {
+    <span class="kw">private</span> TextField startField;
+    <span class="kw">private</span> TextField endField;
+    <span class="kw">private</span> TextField lengthField;
+
+    <span class="kw">public</span> <span class="kw">void</span> calculateLength() {
+        <span class="kw">int</span> start = <span class="type">Integer</span>.parseInt(startField.getText());
+        <span class="kw">int</span> end = <span class="type">Integer</span>.parseInt(endField.getText());
+        lengthField.setText(<span class="type">String</span>.valueOf(end - start));
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Domain object holds the data</span>
+<span class="kw">public</span> <span class="kw">class</span> Interval {
+    <span class="kw">private</span> <span class="kw">int</span> start;
+    <span class="kw">private</span> <span class="kw">int</span> end;
+
+    <span class="kw">public</span> <span class="kw">int</span> getLength() { <span class="kw">return</span> end - start; }
+    <span class="cmt">// getters, setters, observable pattern</span>
+}
+
+<span class="cmt">// GUI observes the domain object</span>
+<span class="kw">public</span> <span class="kw">class</span> IntervalWindow {
+    <span class="kw">private</span> Interval interval;
+
+    <span class="kw">public</span> <span class="kw">void</span> onFieldChange() {
+        interval.setStart(<span class="type">Integer</span>.parseInt(startField.getText()));
+        interval.setEnd(<span class="type">Integer</span>.parseInt(endField.getText()));
+        lengthField.setText(<span class="type">String</span>.valueOf(interval.getLength()));
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="encapsulate-collection">
+  <div class="technique-header">
+    <h3 class="technique-name">Encapsulate Collection</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Course {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Student&gt; students = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;Student&gt; getStudents() {
+        <span class="kw">return</span> students; <span class="cmt">// exposes internal list</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> setStudents(<span class="type">List</span>&lt;Student&gt; students) {
+        <span class="kw">this</span>.students = students;
+    }
+}
+<span class="cmt">// caller can do: course.getStudents().clear(); — breaks encapsulation</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Course {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Student&gt; students = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;Student&gt; getStudents() {
+        <span class="kw">return</span> <span class="type">Collections</span>.unmodifiableList(students);
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> addStudent(Student student) {
+        students.add(student);
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> removeStudent(Student student) {
+        students.remove(student);
+    }
+}
+<span class="cmt">// caller must use: course.addStudent(s); — controlled access</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="encapsulate-composite-with-builder">
+  <div class="technique-header">
+    <h3 class="technique-name">Encapsulate Composite with Builder</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Building a complex XML tree with raw DOM calls</span>
+Element order = doc.createElement(<span class="str">&quot;order&quot;</span>);
+Element items = doc.createElement(<span class="str">&quot;items&quot;</span>);
+order.appendChild(items);
+Element item = doc.createElement(<span class="str">&quot;item&quot;</span>);
+item.setAttribute(<span class="str">&quot;sku&quot;</span>, <span class="str">&quot;A100&quot;</span>);
+Element qty = doc.createElement(<span class="str">&quot;quantity&quot;</span>);
+qty.setTextContent(<span class="str">&quot;5&quot;</span>);
+item.appendChild(qty);
+items.appendChild(item);</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Builder hides the composite construction</span>
+OrderXmlBuilder builder = <span class="kw">new</span> OrderXmlBuilder();
+builder.addItem(<span class="str">&quot;A100&quot;</span>, 5);
+builder.addItem(<span class="str">&quot;B200&quot;</span>, 3);
+Element order = builder.build();
+
+<span class="kw">public</span> <span class="kw">class</span> OrderXmlBuilder {
+    <span class="kw">private</span> <span class="type">List</span>&lt;ItemEntry&gt; items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> addItem(<span class="type">String</span> sku, <span class="kw">int</span> quantity) {
+        items.add(<span class="kw">new</span> ItemEntry(sku, quantity));
+    }
+
+    <span class="kw">public</span> Element build() {
+        <span class="cmt">// encapsulates all DOM construction</span>
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="encapsulate-record">
+  <div class="technique-header">
+    <h3 class="technique-name">Encapsulate Record</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Raw map used as a record</span>
+<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; customer = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+customer.put(<span class="str">&quot;name&quot;</span>, <span class="str">&quot;Alice&quot;</span>);
+customer.put(<span class="str">&quot;email&quot;</span>, <span class="str">&quot;alice@example.com&quot;</span>);
+customer.put(<span class="str">&quot;balance&quot;</span>, 150.0);
+
+<span class="cmt">// Callers access raw fields — typo-prone, no type safety</span>
+<span class="type">String</span> name = (<span class="type">String</span>) customer.get(<span class="str">&quot;name&quot;</span>);
+<span class="kw">double</span> bal = (<span class="type">Double</span>) customer.get(<span class="str">&quot;balence&quot;</span>); <span class="cmt">// bug: typo</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Customer {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> email;
+    <span class="kw">private</span> <span class="kw">double</span> balance;
+
+    <span class="kw">public</span> Customer(<span class="type">String</span> name, <span class="type">String</span> email, <span class="kw">double</span> balance) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.email = email;
+        <span class="kw">this</span>.balance = balance;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="type">String</span> getEmail() { <span class="kw">return</span> email; }
+    <span class="kw">public</span> <span class="kw">double</span> getBalance() { <span class="kw">return</span> balance; }
+}
+<span class="cmt">// Compile-time safety: customer.getBalance() — no typos</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="extract-adapter">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Adapter</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Client code tied directly to a specific login SDK</span>
+<span class="kw">public</span> <span class="kw">class</span> LoginService {
+    <span class="kw">public</span> <span class="kw">boolean</span> authenticate(<span class="type">String</span> user, <span class="type">String</span> pass) {
+        SuperLoginSDK sdk = <span class="kw">new</span> SuperLoginSDK();
+        sdk.init(<span class="str">&quot;key-123&quot;</span>);
+        <span class="kw">int</span> code = sdk.doLogin(user, pass, 30, <span class="kw">true</span>, <span class="kw">null</span>);
+        <span class="kw">return</span> code == 1;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">interface</span> LoginAdapter {
+    <span class="kw">boolean</span> authenticate(<span class="type">String</span> user, <span class="type">String</span> pass);
+}
+
+<span class="kw">public</span> <span class="kw">class</span> SuperLoginAdapter <span class="kw">implements</span> LoginAdapter {
+    <span class="kw">public</span> <span class="kw">boolean</span> authenticate(<span class="type">String</span> user, <span class="type">String</span> pass) {
+        SuperLoginSDK sdk = <span class="kw">new</span> SuperLoginSDK();
+        sdk.init(<span class="str">&quot;key-123&quot;</span>);
+        <span class="kw">return</span> sdk.doLogin(user, pass, 30, <span class="kw">true</span>, <span class="kw">null</span>) == 1;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> LoginService {
+    <span class="kw">private</span> <span class="kw">final</span> LoginAdapter adapter;
+
+    <span class="kw">public</span> LoginService(LoginAdapter adapter) {
+        <span class="kw">this</span>.adapter = adapter;
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> authenticate(<span class="type">String</span> user, <span class="type">String</span> pass) {
+        <span class="kw">return</span> adapter.authenticate(user, pass);
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="extract-composite">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Composite</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Subclasses duplicate composite-handling logic</span>
+<span class="kw">public</span> <span class="kw">class</span> SingleArticle <span class="kw">extends</span> Article {
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> price; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Bundle <span class="kw">extends</span> Article {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Article&gt; articles;
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() {
+        <span class="kw">double</span> total = 0;
+        <span class="kw">for</span> (Article a : articles) total += a.getPrice();
+        <span class="kw">return</span> total;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> DiscountBundle <span class="kw">extends</span> Article {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Article&gt; articles;
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() {
+        <span class="kw">double</span> total = 0;
+        <span class="kw">for</span> (Article a : articles) total += a.getPrice();
+        <span class="kw">return</span> total * 0.9;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> CompositeArticle <span class="kw">extends</span> Article {
+    <span class="kw">protected</span> <span class="type">List</span>&lt;Article&gt; articles = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> add(Article article) { articles.add(article); }
+
+    <span class="kw">public</span> <span class="kw">double</span> getBasePrice() {
+        <span class="kw">double</span> total = 0;
+        <span class="kw">for</span> (Article a : articles) total += a.getPrice();
+        <span class="kw">return</span> total;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Bundle <span class="kw">extends</span> CompositeArticle {
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> getBasePrice(); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> DiscountBundle <span class="kw">extends</span> CompositeArticle {
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> getBasePrice() * 0.9; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="extract-parameter">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Parameter</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Method has a hard-coded dependency</span>
+<span class="kw">public</span> <span class="kw">class</span> TaxCalculator {
+    <span class="kw">public</span> <span class="kw">double</span> calculate(<span class="kw">double</span> amount) {
+        <span class="kw">double</span> rate = TaxRateService.getCurrentRate(); <span class="cmt">// hidden dep</span>
+        <span class="kw">return</span> amount * rate;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Dependency is now an explicit parameter</span>
+<span class="kw">public</span> <span class="kw">class</span> TaxCalculator {
+    <span class="kw">public</span> <span class="kw">double</span> calculate(<span class="kw">double</span> amount, <span class="kw">double</span> taxRate) {
+        <span class="kw">return</span> amount * taxRate;
+    }
+}
+<span class="cmt">// Caller provides the rate: calc.calculate(100, 0.08);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="extract-superclass">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Superclass</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="kw">int</span> annualCost;
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="kw">int</span> getAnnualCost() { <span class="kw">return</span> annualCost; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Department {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">List</span>&lt;Employee&gt; staff;
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="kw">int</span> getAnnualCost() {
+        <span class="kw">return</span> staff.stream().mapToInt(Employee::getAnnualCost).sum();
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> Party {
+    <span class="kw">protected</span> <span class="type">String</span> name;
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">int</span> getAnnualCost();
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Employee <span class="kw">extends</span> Party {
+    <span class="kw">private</span> <span class="kw">int</span> annualCost;
+    <span class="kw">public</span> <span class="kw">int</span> getAnnualCost() { <span class="kw">return</span> annualCost; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Department <span class="kw">extends</span> Party {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Employee&gt; staff;
+    <span class="kw">public</span> <span class="kw">int</span> getAnnualCost() {
+        <span class="kw">return</span> staff.stream().mapToInt(Employee::getAnnualCost).sum();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="extract-variable">
+  <div class="technique-header">
+    <h3 class="technique-name">Extract Variable</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> price(Order order) {
+    <span class="kw">return</span> order.getQuantity() * order.getItemPrice()
+        - Math.max(0, order.getQuantity() - 500) * order.getItemPrice() * 0.05
+        + Math.min(order.getQuantity() * order.getItemPrice() * 0.1, 100);
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> price(Order order) {
+    <span class="kw">double</span> basePrice = order.getQuantity() * order.getItemPrice();
+    <span class="kw">double</span> quantityDiscount = Math.max(0, order.getQuantity() - 500)
+                              * order.getItemPrice() * 0.05;
+    <span class="kw">double</span> shipping = Math.min(basePrice * 0.1, 100);
+    <span class="kw">return</span> basePrice - quantityDiscount + shipping;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="hide-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Hide Method</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Account {
+    <span class="kw">public</span> <span class="kw">void</span> deposit(<span class="kw">double</span> amount) {
+        validate(amount);
+        balance += amount;
+        logTransaction(<span class="str">&quot;deposit&quot;</span>, amount);
+    }
+
+    <span class="cmt">// only called internally — but is public</span>
+    <span class="kw">public</span> <span class="kw">void</span> logTransaction(<span class="type">String</span> type, <span class="kw">double</span> amount) {
+        log.info(type + <span class="str">&quot;: &quot;</span> + amount);
+    }
+
+    <span class="cmt">// only called internally — but is public</span>
+    <span class="kw">public</span> <span class="kw">void</span> validate(<span class="kw">double</span> amount) {
+        <span class="kw">if</span> (amount &lt;= 0) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>();
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Account {
+    <span class="kw">public</span> <span class="kw">void</span> deposit(<span class="kw">double</span> amount) {
+        validate(amount);
+        balance += amount;
+        logTransaction(<span class="str">&quot;deposit&quot;</span>, amount);
+    }
+
+    <span class="kw">private</span> <span class="kw">void</span> logTransaction(<span class="type">String</span> type, <span class="kw">double</span> amount) {
+        log.info(type + <span class="str">&quot;: &quot;</span> + amount);
+    }
+
+    <span class="kw">private</span> <span class="kw">void</span> validate(<span class="kw">double</span> amount) {
+        <span class="kw">if</span> (amount &lt;= 0) <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>();
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="inline-method-inline-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Inline Method / Inline Function</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">int</span> getRating() {
+    <span class="kw">return</span> moreThanFiveLateDeliveries() ? 2 : 1;
+}
+
+<span class="kw">private</span> <span class="kw">boolean</span> moreThanFiveLateDeliveries() {
+    <span class="kw">return</span> numberOfLateDeliveries &gt; 5;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">int</span> getRating() {
+    <span class="kw">return</span> numberOfLateDeliveries &gt; 5 ? 2 : 1;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="inline-singleton">
+  <div class="technique-header">
+    <h3 class="technique-name">Inline Singleton</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> AppConfig {
+    <span class="kw">private</span> <span class="kw">static</span> AppConfig instance;
+    <span class="kw">private</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">String</span>&gt; settings = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+
+    <span class="kw">private</span> AppConfig() {}
+
+    <span class="kw">public</span> <span class="kw">static</span> AppConfig getInstance() {
+        <span class="kw">if</span> (instance == <span class="kw">null</span>) instance = <span class="kw">new</span> AppConfig();
+        <span class="kw">return</span> instance;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> get(<span class="type">String</span> key) { <span class="kw">return</span> settings.get(key); }
+}
+<span class="cmt">// Used everywhere: AppConfig.getInstance().get(&quot;db.url&quot;);</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Pass configuration directly — no global state</span>
+<span class="kw">public</span> <span class="kw">class</span> AppConfig {
+    <span class="kw">private</span> <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">String</span>&gt; settings = <span class="kw">new</span> <span class="type">HashMap</span>&lt;&gt;();
+
+    <span class="kw">public</span> AppConfig(<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">String</span>&gt; settings) {
+        <span class="kw">this</span>.settings = settings;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> get(<span class="type">String</span> key) { <span class="kw">return</span> settings.get(key); }
+}
+<span class="cmt">// Inject where needed: new Service(config);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="inline-temp-inline-variable">
+  <div class="technique-header">
+    <h3 class="technique-name">Inline Temp / Inline Variable</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">boolean</span> hasDiscount(Order order) {
+    <span class="kw">double</span> basePrice = order.basePrice();
+    <span class="kw">return</span> basePrice &gt; 1000;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">boolean</span> hasDiscount(Order order) {
+    <span class="kw">return</span> order.basePrice() &gt; 1000;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="introduce-assertion">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Assertion</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculateDiscount(<span class="kw">double</span> price) {
+    <span class="cmt">// price should never be negative, but we don&#x27;t enforce it</span>
+    <span class="kw">double</span> discount = price * 0.1;
+    <span class="kw">return</span> discount;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculateDiscount(<span class="kw">double</span> price) {
+    <span class="kw">assert</span> price &gt;= 0 : <span class="str">&quot;Price must not be negative: &quot;</span> + price;
+    <span class="kw">double</span> discount = price * 0.1;
+    <span class="kw">return</span> discount;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="introduce-polymorphic-creation-with-factory-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Introduce Polymorphic Creation with Factory Method</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Superclass hard-codes the type it creates</span>
+<span class="kw">public</span> <span class="kw">class</span> HTMLParser <span class="kw">extends</span> Parser {
+    <span class="kw">public</span> <span class="kw">void</span> parse(<span class="type">String</span> text) {
+        Scanner scanner = <span class="kw">new</span> HTMLScanner(text); <span class="cmt">// hard-coded</span>
+        scanner.scan();
+        buildTree(scanner.getTokens());
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> XMLParser <span class="kw">extends</span> Parser {
+    <span class="kw">public</span> <span class="kw">void</span> parse(<span class="type">String</span> text) {
+        Scanner scanner = <span class="kw">new</span> XMLScanner(text); <span class="cmt">// duplicated structure</span>
+        scanner.scan();
+        buildTree(scanner.getTokens());
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> Parser {
+    <span class="kw">public</span> <span class="kw">void</span> parse(<span class="type">String</span> text) {
+        Scanner scanner = createScanner(text); <span class="cmt">// factory method</span>
+        scanner.scan();
+        buildTree(scanner.getTokens());
+    }
+
+    <span class="kw">protected</span> <span class="kw">abstract</span> Scanner createScanner(<span class="type">String</span> text);
+}
+
+<span class="kw">public</span> <span class="kw">class</span> HTMLParser <span class="kw">extends</span> Parser {
+    <span class="kw">protected</span> Scanner createScanner(<span class="type">String</span> text) {
+        <span class="kw">return</span> <span class="kw">new</span> HTMLScanner(text);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> XMLParser <span class="kw">extends</span> Parser {
+    <span class="kw">protected</span> Scanner createScanner(<span class="type">String</span> text) {
+        <span class="kw">return</span> <span class="kw">new</span> XMLScanner(text);
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="limit-instantiation-with-singleton">
+  <div class="technique-header">
+    <h3 class="technique-name">Limit Instantiation with Singleton</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Callers create new instances each time — wasteful for shared state</span>
+<span class="kw">public</span> <span class="kw">class</span> ConnectionPool {
+    <span class="kw">public</span> ConnectionPool() {
+        <span class="cmt">// expensive initialization</span>
+    }
+}
+
+<span class="cmt">// caller A</span>
+ConnectionPool pool1 = <span class="kw">new</span> ConnectionPool();
+<span class="cmt">// caller B</span>
+ConnectionPool pool2 = <span class="kw">new</span> ConnectionPool(); <span class="cmt">// duplicate!</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> ConnectionPool {
+    <span class="kw">private</span> <span class="kw">static</span> ConnectionPool instance;
+
+    <span class="kw">private</span> ConnectionPool() {
+        <span class="cmt">// expensive initialization</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> <span class="kw">synchronized</span> ConnectionPool getInstance() {
+        <span class="kw">if</span> (instance == <span class="kw">null</span>) instance = <span class="kw">new</span> ConnectionPool();
+        <span class="kw">return</span> instance;
+    }
+}
+<span class="cmt">// All callers share: ConnectionPool.getInstance()</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="move-accumulation-to-collecting-parameter">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Accumulation to Collecting Parameter</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Building result by concatenating return values</span>
+<span class="kw">public</span> <span class="type">String</span> renderTree(TreeNode node) {
+    <span class="type">String</span> result = <span class="str">&quot;&lt;&quot;</span> + node.getName() + <span class="str">&quot;&gt;&quot;</span>;
+    <span class="kw">for</span> (TreeNode child : node.getChildren()) {
+        result += renderTree(child);
+    }
+    result += <span class="str">&quot;&lt;/&quot;</span> + node.getName() + <span class="str">&quot;&gt;&quot;</span>;
+    <span class="kw">return</span> result; <span class="cmt">// O(n^2) string concatenation</span>
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Pass a collecting parameter to accumulate the result</span>
+<span class="kw">public</span> <span class="type">String</span> renderTree(TreeNode node) {
+    <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+    renderTree(node, sb);
+    <span class="kw">return</span> sb.toString();
+}
+
+<span class="kw">private</span> <span class="kw">void</span> renderTree(TreeNode node, <span class="type">StringBuilder</span> sb) {
+    sb.append(<span class="str">&quot;&lt;&quot;</span>).append(node.getName()).append(<span class="str">&quot;&gt;&quot;</span>);
+    <span class="kw">for</span> (TreeNode child : node.getChildren()) {
+        renderTree(child, sb);
+    }
+    sb.append(<span class="str">&quot;&lt;/&quot;</span>).append(node.getName()).append(<span class="str">&quot;&gt;&quot;</span>);
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="move-statements-into-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Statements into Function</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Every caller repeats the same context around a function call</span>
+<span class="kw">double</span> price = calculatePrice(order);
+report.append(<span class="str">&quot;Item: &quot;</span> + order.getName());
+report.append(<span class="str">&quot;Price: &quot;</span> + price);
+report.append(<span class="str">&quot;---&quot;</span>);
+
+<span class="cmt">// another caller, same wrapping</span>
+<span class="kw">double</span> price2 = calculatePrice(order2);
+report2.append(<span class="str">&quot;Item: &quot;</span> + order2.getName());
+report2.append(<span class="str">&quot;Price: &quot;</span> + price2);
+report2.append(<span class="str">&quot;---&quot;</span>);</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// The repeated context moves into the function itself</span>
+<span class="kw">public</span> <span class="type">String</span> formatOrderLine(Order order) {
+    <span class="kw">double</span> price = calculatePrice(order);
+    <span class="kw">return</span> <span class="str">&quot;Item: &quot;</span> + order.getName() + <span class="str">&quot;\n&quot;</span>
+         + <span class="str">&quot;Price: &quot;</span> + price + <span class="str">&quot;\n&quot;</span>
+         + <span class="str">&quot;---&quot;</span>;
+}
+
+<span class="cmt">// Callers are now simple</span>
+report.append(formatOrderLine(order));
+report2.append(formatOrderLine(order2));</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="move-statements-to-callers">
+  <div class="technique-header">
+    <h3 class="technique-name">Move Statements to Callers</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Function does too much — one part varies by caller</span>
+<span class="kw">public</span> <span class="kw">void</span> renderPerson(Person person, OutputStream out) {
+    out.write(person.getName());
+    out.write(person.getLocation()); <span class="cmt">// some callers don&#x27;t want this</span>
+    out.write(<span class="str">&quot;\n&quot;</span>);
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Varying part moves back to callers</span>
+<span class="kw">public</span> <span class="kw">void</span> renderPerson(Person person, OutputStream out) {
+    out.write(person.getName());
+    out.write(<span class="str">&quot;\n&quot;</span>);
+}
+
+<span class="cmt">// Caller that needs location adds it</span>
+renderPerson(person, out);
+out.write(person.getLocation());</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="parameterize-method-parameterize-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Parameterize Method / Parameterize Function</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">public</span> <span class="kw">void</span> tenPercentRaise() {
+        salary *= 1.10;
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> fivePercentRaise() {
+        salary *= 1.05;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">public</span> <span class="kw">void</span> raise(<span class="kw">double</span> factor) {
+        salary *= (1 + factor);
+    }
+}
+<span class="cmt">// usage: emp.raise(0.10); or emp.raise(0.05);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="pull-up-constructor-body">
+  <div class="technique-header">
+    <h3 class="technique-name">Pull Up Constructor Body</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee <span class="kw">extends</span> Party {
+    <span class="kw">public</span> Employee(<span class="type">String</span> name, <span class="kw">int</span> id, <span class="kw">double</span> salary) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.id = id;
+        <span class="kw">this</span>.salary = salary;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Manager <span class="kw">extends</span> Party {
+    <span class="kw">public</span> Manager(<span class="type">String</span> name, <span class="kw">int</span> id, <span class="kw">double</span> salary, <span class="kw">int</span> grade) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.id = id;
+        <span class="kw">this</span>.salary = salary;
+        <span class="kw">this</span>.grade = grade;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Party {
+    <span class="kw">protected</span> <span class="type">String</span> name;
+    <span class="kw">protected</span> <span class="kw">int</span> id;
+    <span class="kw">protected</span> <span class="kw">double</span> salary;
+
+    <span class="kw">protected</span> Party(<span class="type">String</span> name, <span class="kw">int</span> id, <span class="kw">double</span> salary) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.id = id;
+        <span class="kw">this</span>.salary = salary;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Employee <span class="kw">extends</span> Party {
+    <span class="kw">public</span> Employee(<span class="type">String</span> name, <span class="kw">int</span> id, <span class="kw">double</span> salary) {
+        <span class="kw">super</span>(name, id, salary);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Manager <span class="kw">extends</span> Party {
+    <span class="kw">private</span> <span class="kw">int</span> grade;
+
+    <span class="kw">public</span> Manager(<span class="type">String</span> name, <span class="kw">int</span> id, <span class="kw">double</span> salary, <span class="kw">int</span> grade) {
+        <span class="kw">super</span>(name, id, salary);
+        <span class="kw">this</span>.grade = grade;
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="pull-up-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Pull Up Field</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee <span class="kw">extends</span> Party {
+    <span class="kw">protected</span> <span class="type">String</span> name; <span class="cmt">// duplicated</span>
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Department <span class="kw">extends</span> Party {
+    <span class="kw">protected</span> <span class="type">String</span> name; <span class="cmt">// duplicated</span>
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Party {
+    <span class="kw">protected</span> <span class="type">String</span> name; <span class="cmt">// shared in parent</span>
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Employee <span class="kw">extends</span> Party {
+    <span class="cmt">// name is inherited</span>
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Department <span class="kw">extends</span> Party {
+    <span class="cmt">// name is inherited</span>
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="remove-assignments-to-parameters">
+  <div class="technique-header">
+    <h3 class="technique-name">Remove Assignments to Parameters</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> discount(<span class="kw">double</span> inputVal, <span class="kw">int</span> quantity) {
+    <span class="kw">if</span> (quantity &gt; 50) inputVal -= 2;
+    <span class="kw">if</span> (quantity &gt; 100) inputVal -= 1;
+    <span class="kw">return</span> inputVal;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> discount(<span class="kw">double</span> inputVal, <span class="kw">int</span> quantity) {
+    <span class="kw">double</span> result = inputVal;
+    <span class="kw">if</span> (quantity &gt; 50) result -= 2;
+    <span class="kw">if</span> (quantity &gt; 100) result -= 1;
+    <span class="kw">return</span> result;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="remove-control-flag-remove-flag-argument">
+  <div class="technique-header">
+    <h3 class="technique-name">Remove Control Flag / Remove Flag Argument</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> sendAlert(<span class="kw">boolean</span> isUrgent) {
+    <span class="kw">if</span> (isUrgent) {
+        sendSMS();
+        sendEmail();
+        callOnDuty();
+    } <span class="kw">else</span> {
+        sendEmail();
+    }
+}
+<span class="cmt">// caller: sendAlert(true); — what does true mean?</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> sendUrgentAlert() {
+    sendSMS();
+    sendEmail();
+    callOnDuty();
+}
+
+<span class="kw">public</span> <span class="kw">void</span> sendNormalAlert() {
+    sendEmail();
+}
+<span class="cmt">// caller: sendUrgentAlert(); — intent is clear</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="remove-setting-method">
+  <div class="technique-header">
+    <h3 class="technique-name">Remove Setting Method</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Account {
+    <span class="kw">private</span> <span class="type">String</span> id;
+
+    <span class="kw">public</span> Account(<span class="type">String</span> id) {
+        <span class="kw">this</span>.id = id;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getId() { <span class="kw">return</span> id; }
+    <span class="kw">public</span> <span class="kw">void</span> setId(<span class="type">String</span> id) { <span class="kw">this</span>.id = id; } <span class="cmt">// should not change</span>
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Account {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">String</span> id;
+
+    <span class="kw">public</span> Account(<span class="type">String</span> id) {
+        <span class="kw">this</span>.id = id;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getId() { <span class="kw">return</span> id; }
+    <span class="cmt">// no setter — id is immutable after construction</span>
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="rename-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Rename Field</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Customer {
+    <span class="kw">private</span> <span class="type">String</span> nm;
+    <span class="kw">private</span> <span class="type">String</span> tl;
+    <span class="kw">private</span> <span class="type">String</span> eml;
+
+    <span class="kw">public</span> <span class="type">String</span> getNm() { <span class="kw">return</span> nm; }
+    <span class="kw">public</span> <span class="type">String</span> getTl() { <span class="kw">return</span> tl; }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Customer {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> phoneNumber;
+    <span class="kw">private</span> <span class="type">String</span> email;
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="type">String</span> getPhoneNumber() { <span class="kw">return</span> phoneNumber; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-array-with-object">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Array with Object</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Array with positional meaning</span>
+<span class="type">String</span>[] row = <span class="kw">new</span> <span class="type">String</span>[3];
+row[0] = <span class="str">&quot;Liverpool&quot;</span>;
+row[1] = <span class="str">&quot;15&quot;</span>;  <span class="cmt">// wins</span>
+row[2] = <span class="str">&quot;3&quot;</span>;   <span class="cmt">// losses</span>
+
+<span class="type">String</span> team = row[0];
+<span class="kw">int</span> wins = <span class="type">Integer</span>.parseInt(row[1]);</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> TeamRecord {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="kw">int</span> wins;
+    <span class="kw">private</span> <span class="kw">int</span> losses;
+
+    <span class="kw">public</span> TeamRecord(<span class="type">String</span> name, <span class="kw">int</span> wins, <span class="kw">int</span> losses) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.wins = wins;
+        <span class="kw">this</span>.losses = losses;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="kw">int</span> getWins() { <span class="kw">return</span> wins; }
+    <span class="kw">public</span> <span class="kw">int</span> getLosses() { <span class="kw">return</span> losses; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-command-with-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Command with Function</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Command object is overkill for simple logic</span>
+<span class="kw">public</span> <span class="kw">class</span> ChargeCalculator {
+    <span class="kw">private</span> <span class="kw">final</span> Customer customer;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">int</span> usage;
+
+    <span class="kw">public</span> ChargeCalculator(Customer customer, <span class="kw">int</span> usage) {
+        <span class="kw">this</span>.customer = customer;
+        <span class="kw">this</span>.usage = usage;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> execute() {
+        <span class="kw">return</span> customer.getRate() * usage;
+    }
+}
+<span class="cmt">// usage: new ChargeCalculator(cust, 100).execute();</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Simple function is enough</span>
+<span class="kw">public</span> <span class="kw">double</span> charge(Customer customer, <span class="kw">int</span> usage) {
+    <span class="kw">return</span> customer.getRate() * usage;
+}
+<span class="cmt">// usage: charge(cust, 100);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-conditional-dispatcher-with-command">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Conditional Dispatcher with Command</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> handleAction(<span class="type">String</span> action, <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; params) {
+    <span class="kw">if</span> (action.equals(<span class="str">&quot;create&quot;</span>)) {
+        <span class="cmt">// 20 lines of create logic</span>
+    } <span class="kw">else</span> <span class="kw">if</span> (action.equals(<span class="str">&quot;update&quot;</span>)) {
+        <span class="cmt">// 20 lines of update logic</span>
+    } <span class="kw">else</span> <span class="kw">if</span> (action.equals(<span class="str">&quot;delete&quot;</span>)) {
+        <span class="cmt">// 20 lines of delete logic</span>
+    } <span class="kw">else</span> <span class="kw">if</span> (action.equals(<span class="str">&quot;archive&quot;</span>)) {
+        <span class="cmt">// 20 lines of archive logic</span>
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">interface</span> Command {
+    <span class="kw">void</span> execute(<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; params);
+}
+
+<span class="type">Map</span>&lt;<span class="type">String</span>, Command&gt; commands = <span class="type">Map</span>.of(
+    <span class="str">&quot;create&quot;</span>, <span class="kw">new</span> CreateCommand(),
+    <span class="str">&quot;update&quot;</span>, <span class="kw">new</span> UpdateCommand(),
+    <span class="str">&quot;delete&quot;</span>, <span class="kw">new</span> DeleteCommand(),
+    <span class="str">&quot;archive&quot;</span>, <span class="kw">new</span> ArchiveCommand()
+);
+
+<span class="kw">public</span> <span class="kw">void</span> handleAction(<span class="type">String</span> action, <span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; params) {
+    commands.get(action).execute(params);
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-constructor-with-factory-method-factory-function">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Constructor with Factory Method / Factory Function</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">private</span> <span class="kw">int</span> type;
+
+    <span class="kw">public</span> Employee(<span class="kw">int</span> type) {
+        <span class="kw">this</span>.type = type;
+    }
+}
+<span class="cmt">// caller: new Employee(0); — what is 0?</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">private</span> <span class="kw">int</span> type;
+
+    <span class="kw">private</span> Employee(<span class="kw">int</span> type) { <span class="kw">this</span>.type = type; }
+
+    <span class="kw">public</span> <span class="kw">static</span> Employee createEngineer() {
+        <span class="kw">return</span> <span class="kw">new</span> Employee(0);
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> Employee createManager() {
+        <span class="kw">return</span> <span class="kw">new</span> Employee(1);
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> Employee createSalesperson() {
+        <span class="kw">return</span> <span class="kw">new</span> Employee(2);
+    }
+}
+<span class="cmt">// caller: Employee.createEngineer(); — clear intent</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-delegation-with-inheritance">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Delegation with Inheritance</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Class delegates everything to another — simpler to just extend</span>
+<span class="kw">public</span> <span class="kw">class</span> PolicyHolder {
+    <span class="kw">private</span> Person person;
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> person.getName(); }
+    <span class="kw">public</span> <span class="type">String</span> getAddress() { <span class="kw">return</span> person.getAddress(); }
+    <span class="kw">public</span> <span class="type">String</span> getPhone() { <span class="kw">return</span> person.getPhone(); }
+    <span class="kw">public</span> <span class="kw">int</span> getAge() { <span class="kw">return</span> person.getAge(); }
+    <span class="cmt">// ... 10 more pure delegations</span>
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Inherit instead — when delegation adds nothing</span>
+<span class="kw">public</span> <span class="kw">class</span> PolicyHolder <span class="kw">extends</span> Person {
+    <span class="cmt">// inherits getName(), getAddress(), getPhone(), getAge()</span>
+    <span class="cmt">// add only policy-specific behavior here</span>
+    <span class="kw">private</span> <span class="type">String</span> policyNumber;
+
+    <span class="kw">public</span> <span class="type">String</span> getPolicyNumber() { <span class="kw">return</span> policyNumber; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-derived-variable-with-query">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Derived Variable with Query</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> ProductionPlan {
+    <span class="kw">private</span> <span class="kw">double</span> production;
+    <span class="kw">private</span> <span class="type">List</span>&lt;Adjustment&gt; adjustments = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> addAdjustment(Adjustment adj) {
+        adjustments.add(adj);
+        production += adj.getAmount(); <span class="cmt">// derived variable kept in sync</span>
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> getProduction() { <span class="kw">return</span> production; }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> ProductionPlan {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Adjustment&gt; adjustments = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> addAdjustment(Adjustment adj) {
+        adjustments.add(adj);
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> getProduction() {
+        <span class="kw">return</span> adjustments.stream()
+            .mapToDouble(Adjustment::getAmount)
+            .sum(); <span class="cmt">// calculated fresh each time</span>
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-error-code-with-exception">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Error Code with Exception</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">int</span> withdraw(<span class="kw">double</span> amount) {
+    <span class="kw">if</span> (amount &gt; balance) <span class="kw">return</span> -1; <span class="cmt">// error code</span>
+    balance -= amount;
+    <span class="kw">return</span> 0; <span class="cmt">// success</span>
+}
+<span class="cmt">// caller must check: if (withdraw(50) == -1) ...</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> withdraw(<span class="kw">double</span> amount) {
+    <span class="kw">if</span> (amount &gt; balance) {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalArgumentException</span>(<span class="str">&quot;Insufficient funds&quot;</span>);
+    }
+    balance -= amount;
+}
+<span class="cmt">// caller gets a clear exception if something&#x27;s wrong</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-exception-with-test">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Exception with Test</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> getValueForPeriod(<span class="kw">int</span> period) {
+    <span class="kw">try</span> {
+        <span class="kw">return</span> values[period];
+    } <span class="kw">catch</span> (ArrayIndexOutOfBoundsException e) {
+        <span class="kw">return</span> 0;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> getValueForPeriod(<span class="kw">int</span> period) {
+    <span class="kw">if</span> (period &lt; 0 || period &gt;= values.length) <span class="kw">return</span> 0;
+    <span class="kw">return</span> values[period];
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-function-with-command">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Function with Command</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Complex function with lots of local state</span>
+<span class="kw">public</span> <span class="kw">double</span> score(Candidate candidate, MedicalExam exam,
+                    ScoringGuide guide) {
+    <span class="kw">double</span> result = 0;
+    <span class="kw">boolean</span> isSmoker = candidate.isSmoker();
+    <span class="kw">double</span> healthLevel = exam.getHealthLevel();
+    <span class="cmt">// ... 30 lines of complex scoring logic using many locals</span>
+    <span class="kw">return</span> result;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Scorer {
+    <span class="kw">private</span> <span class="kw">final</span> Candidate candidate;
+    <span class="kw">private</span> <span class="kw">final</span> MedicalExam exam;
+    <span class="kw">private</span> <span class="kw">final</span> ScoringGuide guide;
+    <span class="kw">private</span> <span class="kw">double</span> result;
+    <span class="kw">private</span> <span class="kw">boolean</span> isSmoker;
+    <span class="kw">private</span> <span class="kw">double</span> healthLevel;
+
+    <span class="kw">public</span> Scorer(Candidate candidate, MedicalExam exam,
+                  ScoringGuide guide) {
+        <span class="kw">this</span>.candidate = candidate;
+        <span class="kw">this</span>.exam = exam;
+        <span class="kw">this</span>.guide = guide;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> execute() {
+        isSmoker = candidate.isSmoker();
+        healthLevel = exam.getHealthLevel();
+        scoreLifestyle();
+        scoreMedical();
+        <span class="kw">return</span> result;
+    }
+
+    <span class="kw">private</span> <span class="kw">void</span> scoreLifestyle() { /* ... */ }
+    <span class="kw">private</span> <span class="kw">void</span> scoreMedical() { /* ... */ }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-hard-coded-notifications-with-observer">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Hard-Coded Notifications with Observer</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Cart {
+    <span class="kw">public</span> <span class="kw">void</span> addItem(Item item) {
+        items.add(item);
+        <span class="cmt">// hard-coded notifications</span>
+        inventoryService.reserve(item);
+        analyticsService.trackAdd(item);
+        uiWidget.refresh();
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Cart {
+    <span class="kw">private</span> <span class="type">List</span>&lt;CartListener&gt; listeners = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> addListener(CartListener listener) {
+        listeners.add(listener);
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> addItem(Item item) {
+        items.add(item);
+        <span class="kw">for</span> (CartListener l : listeners) l.onItemAdded(item);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">interface</span> CartListener {
+    <span class="kw">void</span> onItemAdded(Item item);
+}
+<span class="cmt">// Register: cart.addListener(inventoryService::reserve);</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-implicit-tree-with-composite">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Implicit Tree with Composite</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Tree stored as a flat string with indentation</span>
+<span class="type">String</span> tree = <span class="str">&quot;root\n  child1\n    leaf1\n  child2\n    leaf2&quot;</span>;
+<span class="cmt">// Parsing, traversal, and manipulation require string gymnastics</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> Node {
+    <span class="kw">protected</span> <span class="type">String</span> name;
+    <span class="kw">public</span> <span class="kw">abstract</span> <span class="type">List</span>&lt;Node&gt; getChildren();
+}
+
+<span class="kw">public</span> <span class="kw">class</span> CompositeNode <span class="kw">extends</span> Node {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Node&gt; children = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+    <span class="kw">public</span> <span class="type">List</span>&lt;Node&gt; getChildren() { <span class="kw">return</span> children; }
+    <span class="kw">public</span> <span class="kw">void</span> add(Node child) { children.add(child); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> LeafNode <span class="kw">extends</span> Node {
+    <span class="kw">public</span> <span class="type">List</span>&lt;Node&gt; getChildren() {
+        <span class="kw">return</span> <span class="type">Collections</span>.emptyList();
+    }
+}
+<span class="cmt">// Tree operations use polymorphism, not string parsing</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-inline-code-with-function-call">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Inline Code with Function Call</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">boolean</span> hasManager = <span class="kw">false</span>;
+<span class="kw">for</span> (Employee e : employees) {
+    <span class="kw">if</span> (e.getRole().equals(<span class="str">&quot;Manager&quot;</span>)) {
+        hasManager = <span class="kw">true</span>;
+        <span class="kw">break</span>;
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">boolean</span> hasManager = employees.stream()
+    .anyMatch(e -&gt; e.getRole().equals(<span class="str">&quot;Manager&quot;</span>));</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-magic-number-with-symbolic-constant">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Magic Number with Symbolic Constant</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> potentialEnergy(<span class="kw">double</span> mass, <span class="kw">double</span> height) {
+    <span class="kw">return</span> mass * 9.81 * height;
+}
+
+<span class="kw">public</span> <span class="kw">boolean</span> isEligible(<span class="kw">int</span> age) {
+    <span class="kw">return</span> age &gt;= 18 &amp;&amp; age &lt;= 65;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">private</span> <span class="kw">static</span> <span class="kw">final</span> <span class="kw">double</span> GRAVITY = 9.81;
+<span class="kw">private</span> <span class="kw">static</span> <span class="kw">final</span> <span class="kw">int</span> MIN_ELIGIBLE_AGE = 18;
+<span class="kw">private</span> <span class="kw">static</span> <span class="kw">final</span> <span class="kw">int</span> MAX_ELIGIBLE_AGE = 65;
+
+<span class="kw">public</span> <span class="kw">double</span> potentialEnergy(<span class="kw">double</span> mass, <span class="kw">double</span> height) {
+    <span class="kw">return</span> mass * GRAVITY * height;
+}
+
+<span class="kw">public</span> <span class="kw">boolean</span> isEligible(<span class="kw">int</span> age) {
+    <span class="kw">return</span> age &gt;= MIN_ELIGIBLE_AGE &amp;&amp; age &lt;= MAX_ELIGIBLE_AGE;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-one-many-distinctions-with-composite">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace One/Many Distinctions with Composite</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Separate handling for single vs. multiple</span>
+<span class="kw">public</span> <span class="kw">void</span> process(<span class="type">Object</span> input) {
+    <span class="kw">if</span> (input <span class="kw">instanceof</span> Item) {
+        applyDiscount((Item) input);
+    } <span class="kw">else</span> <span class="kw">if</span> (input <span class="kw">instanceof</span> <span class="type">List</span>) {
+        <span class="kw">for</span> (Item item : (<span class="type">List</span>&lt;Item&gt;) input) {
+            applyDiscount(item);
+        }
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Composite treats one and many uniformly</span>
+<span class="kw">public</span> <span class="kw">interface</span> Discountable {
+    <span class="kw">void</span> applyDiscount(<span class="kw">double</span> rate);
+}
+
+<span class="kw">public</span> <span class="kw">class</span> SingleItem <span class="kw">implements</span> Discountable {
+    <span class="kw">public</span> <span class="kw">void</span> applyDiscount(<span class="kw">double</span> rate) { price *= (1 - rate); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> ItemGroup <span class="kw">implements</span> Discountable {
+    <span class="kw">private</span> <span class="type">List</span>&lt;Discountable&gt; items;
+    <span class="kw">public</span> <span class="kw">void</span> applyDiscount(<span class="kw">double</span> rate) {
+        <span class="kw">for</span> (Discountable item : items) item.applyDiscount(rate);
+    }
+}
+<span class="cmt">// Caller: discountable.applyDiscount(0.1); — works for both</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-parameter-with-explicit-methods">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Parameter with Explicit Methods</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> setValue(<span class="type">String</span> name, <span class="kw">int</span> value) {
+    <span class="kw">if</span> (name.equals(<span class="str">&quot;height&quot;</span>)) height = value;
+    <span class="kw">else</span> <span class="kw">if</span> (name.equals(<span class="str">&quot;width&quot;</span>)) width = value;
+}
+<span class="cmt">// caller: setValue(&quot;height&quot;, 10);</span></code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">void</span> setHeight(<span class="kw">int</span> value) { height = value; }
+<span class="kw">public</span> <span class="kw">void</span> setWidth(<span class="kw">int</span> value) { width = value; }
+<span class="cmt">// caller: setHeight(10); — type-safe and discoverable</span></code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-state-altering-conditionals-with-state">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace State-Altering Conditionals with State</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Permit {
+    <span class="kw">private</span> <span class="type">String</span> state; <span class="cmt">// &quot;requested&quot;, &quot;approved&quot;, &quot;denied&quot;</span>
+
+    <span class="kw">public</span> <span class="kw">void</span> approve() {
+        <span class="kw">if</span> (state.equals(<span class="str">&quot;requested&quot;</span>)) {
+            state = <span class="str">&quot;approved&quot;</span>;
+        } <span class="kw">else</span> <span class="kw">if</span> (state.equals(<span class="str">&quot;denied&quot;</span>)) {
+            <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalStateException</span>(<span class="str">&quot;Cannot approve denied&quot;</span>);
+        }
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> deny() {
+        <span class="kw">if</span> (state.equals(<span class="str">&quot;requested&quot;</span>)) {
+            state = <span class="str">&quot;denied&quot;</span>;
+        } <span class="kw">else</span> <span class="kw">if</span> (state.equals(<span class="str">&quot;approved&quot;</span>)) {
+            <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalStateException</span>(<span class="str">&quot;Cannot deny approved&quot;</span>);
+        }
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">interface</span> PermitState {
+    PermitState approve();
+    PermitState deny();
+}
+
+<span class="kw">public</span> <span class="kw">class</span> RequestedState <span class="kw">implements</span> PermitState {
+    <span class="kw">public</span> PermitState approve() { <span class="kw">return</span> <span class="kw">new</span> ApprovedState(); }
+    <span class="kw">public</span> PermitState deny() { <span class="kw">return</span> <span class="kw">new</span> DeniedState(); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> ApprovedState <span class="kw">implements</span> PermitState {
+    <span class="kw">public</span> PermitState approve() { <span class="kw">return</span> <span class="kw">this</span>; }
+    <span class="kw">public</span> PermitState deny() {
+        <span class="kw">throw</span> <span class="kw">new</span> <span class="type">IllegalStateException</span>(<span class="str">&quot;Cannot deny approved&quot;</span>);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Permit {
+    <span class="kw">private</span> PermitState state = <span class="kw">new</span> RequestedState();
+    <span class="kw">public</span> <span class="kw">void</span> approve() { state = state.approve(); }
+    <span class="kw">public</span> <span class="kw">void</span> deny() { state = state.deny(); }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-subclass-with-delegate">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Subclass with Delegate</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Inheritance used for one varying behavior</span>
+<span class="kw">public</span> <span class="kw">class</span> PremiumBooking <span class="kw">extends</span> Booking {
+    <span class="kw">public</span> <span class="kw">boolean</span> hasDinner() { <span class="kw">return</span> <span class="kw">true</span>; }
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> <span class="kw">super</span>.getPrice() * 0.9; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Booking {
+    <span class="kw">public</span> <span class="kw">boolean</span> hasDinner() { <span class="kw">return</span> <span class="kw">false</span>; }
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> basePrice; }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Booking {
+    <span class="kw">private</span> BookingDelegate delegate;
+
+    <span class="kw">public</span> Booking() { <span class="kw">this</span>.delegate = <span class="kw">new</span> RegularDelegate(); }
+    <span class="kw">public</span> Booking(BookingDelegate delegate) {
+        <span class="kw">this</span>.delegate = delegate;
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> hasDinner() { <span class="kw">return</span> delegate.hasDinner(); }
+    <span class="kw">public</span> <span class="kw">double</span> getPrice() { <span class="kw">return</span> delegate.getPrice(basePrice); }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> PremiumDelegate <span class="kw">implements</span> BookingDelegate {
+    <span class="kw">public</span> <span class="kw">boolean</span> hasDinner() { <span class="kw">return</span> <span class="kw">true</span>; }
+    <span class="kw">public</span> <span class="kw">double</span> getPrice(<span class="kw">double</span> base) { <span class="kw">return</span> base * 0.9; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-subclass-with-fields-remove-subclass">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Subclass with Fields / Remove Subclass</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> Person {
+    <span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">boolean</span> isMale();
+    <span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">char</span> getCode();
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Male <span class="kw">extends</span> Person {
+    <span class="kw">public</span> <span class="kw">boolean</span> isMale() { <span class="kw">return</span> <span class="kw">true</span>; }
+    <span class="kw">public</span> <span class="kw">char</span> getCode() { <span class="kw">return</span> &#x27;M&#x27;; }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Female <span class="kw">extends</span> Person {
+    <span class="kw">public</span> <span class="kw">boolean</span> isMale() { <span class="kw">return</span> <span class="kw">false</span>; }
+    <span class="kw">public</span> <span class="kw">char</span> getCode() { <span class="kw">return</span> &#x27;F&#x27;; }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> Person {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">boolean</span> male;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="kw">char</span> code;
+
+    <span class="kw">private</span> Person(<span class="kw">boolean</span> male, <span class="kw">char</span> code) {
+        <span class="kw">this</span>.male = male;
+        <span class="kw">this</span>.code = code;
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> Person createMale() {
+        <span class="kw">return</span> <span class="kw">new</span> Person(<span class="kw">true</span>, &#x27;M&#x27;);
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> Person createFemale() {
+        <span class="kw">return</span> <span class="kw">new</span> Person(<span class="kw">false</span>, &#x27;F&#x27;);
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isMale() { <span class="kw">return</span> male; }
+    <span class="kw">public</span> <span class="kw">char</span> getCode() { <span class="kw">return</span> code; }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="replace-superclass-with-delegate">
+  <div class="technique-header">
+    <h3 class="technique-name">Replace Superclass with Delegate</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Stack inherits from List — but a stack is NOT a list</span>
+<span class="kw">public</span> <span class="kw">class</span> Stack&lt;E&gt; <span class="kw">extends</span> <span class="type">ArrayList</span>&lt;E&gt; {
+    <span class="kw">public</span> <span class="kw">void</span> push(E item) { add(item); }
+    <span class="kw">public</span> E pop() { <span class="kw">return</span> remove(size() - 1); }
+    <span class="cmt">// inherits add(index), remove(index), get(index) — wrong!</span>
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="cmt">// Stack delegates to a list instead</span>
+<span class="kw">public</span> <span class="kw">class</span> Stack&lt;E&gt; {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">ArrayList</span>&lt;E&gt; storage = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="kw">void</span> push(E item) { storage.add(item); }
+    <span class="kw">public</span> E pop() { <span class="kw">return</span> storage.remove(storage.size() - 1); }
+    <span class="kw">public</span> <span class="kw">boolean</span> isEmpty() { <span class="kw">return</span> storage.isEmpty(); }
+    <span class="kw">public</span> <span class="kw">int</span> size() { <span class="kw">return</span> storage.size(); }
+    <span class="cmt">// no unwanted List methods exposed</span>
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="self-encapsulate-field">
+  <div class="technique-header">
+    <h3 class="technique-name">Self Encapsulate Field</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Range</span> {
+    <span class="kw">public</span> <span class="kw">int</span> low;
+    <span class="kw">public</span> <span class="kw">int</span> high;
+
+    <span class="kw">public</span> <span class="kw">boolean</span> includes(<span class="kw">int</span> value) {
+        <span class="kw">return</span> value &gt;= low &amp;&amp; value &lt;= high;
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> grow(<span class="kw">int</span> factor) {
+        high = high * factor; <span class="cmt">// direct field access</span>
+    }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Range</span> {
+    <span class="kw">private</span> <span class="kw">int</span> low;
+    <span class="kw">private</span> <span class="kw">int</span> high;
+
+    <span class="kw">public</span> <span class="kw">int</span> getLow() { <span class="kw">return</span> low; }
+    <span class="kw">public</span> <span class="kw">int</span> getHigh() { <span class="kw">return</span> high; }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> includes(<span class="kw">int</span> value) {
+        <span class="kw">return</span> value &gt;= getLow() &amp;&amp; value &lt;= getHigh();
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> grow(<span class="kw">int</span> factor) {
+        high = getHigh() * factor; <span class="cmt">// through accessor</span>
+    }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="slide-statements">
+  <div class="technique-header">
+    <h3 class="technique-name">Slide Statements</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculateTotal(Order order) {
+    <span class="kw">double</span> discount = getDiscount(order);
+    <span class="type">String</span> label = order.getLabel();
+    <span class="kw">double</span> basePrice = order.getBasePrice();
+    <span class="kw">double</span> shipping = order.getShipping();
+    <span class="kw">double</span> total = basePrice + shipping;
+    total -= discount;
+    printLabel(label);
+    <span class="kw">return</span> total;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> calculateTotal(Order order) {
+    <span class="kw">double</span> basePrice = order.getBasePrice();
+    <span class="kw">double</span> shipping = order.getShipping();
+    <span class="kw">double</span> discount = getDiscount(order);
+    <span class="kw">double</span> total = basePrice + shipping - discount;
+
+    <span class="type">String</span> label = order.getLabel();
+    printLabel(label);
+    <span class="kw">return</span> total;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="split-loop">
+  <div class="technique-header">
+    <h3 class="technique-name">Split Loop</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">double</span> totalSalary = 0;
+<span class="kw">int</span> youngest = <span class="type">Integer</span>.MAX_VALUE;
+<span class="kw">for</span> (Employee e : employees) {
+    totalSalary += e.getSalary();
+    <span class="kw">if</span> (e.getAge() &lt; youngest) youngest = e.getAge();
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">double</span> totalSalary = 0;
+<span class="kw">for</span> (Employee e : employees) {
+    totalSalary += e.getSalary();
+}
+
+<span class="kw">int</span> youngest = <span class="type">Integer</span>.MAX_VALUE;
+<span class="kw">for</span> (Employee e : employees) {
+    <span class="kw">if</span> (e.getAge() &lt; youngest) youngest = e.getAge();
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="split-phase">
+  <div class="technique-header">
+    <h3 class="technique-name">Split Phase</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> priceOrder(Product product, <span class="kw">int</span> quantity,
+                         ShippingMethod shipping) {
+    <span class="kw">double</span> basePrice = product.getBasePrice() * quantity;
+    <span class="kw">double</span> discount = Math.max(quantity - 500, 0) * product.getBasePrice() * 0.05;
+    <span class="kw">double</span> shippingCost = quantity * shipping.getPerItemRate();
+    <span class="kw">if</span> (basePrice - discount &gt; 1000) {
+        shippingCost *= shipping.getDiscountThreshold();
+    }
+    <span class="kw">return</span> basePrice - discount + shippingCost;
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">double</span> priceOrder(Product product, <span class="kw">int</span> quantity,
+                         ShippingMethod shipping) {
+    PriceData priceData = calculatePriceData(product, quantity);
+    <span class="kw">return</span> applyShipping(priceData, shipping);
+}
+
+<span class="kw">private</span> PriceData calculatePriceData(Product product, <span class="kw">int</span> quantity) {
+    <span class="kw">double</span> basePrice = product.getBasePrice() * quantity;
+    <span class="kw">double</span> discount = Math.max(quantity - 500, 0)
+                      * product.getBasePrice() * 0.05;
+    <span class="kw">return</span> <span class="kw">new</span> PriceData(basePrice, discount, quantity);
+}
+
+<span class="kw">private</span> <span class="kw">double</span> applyShipping(PriceData data, ShippingMethod shipping) {
+    <span class="kw">double</span> shippingCost = data.quantity * shipping.getPerItemRate();
+    <span class="kw">if</span> (data.basePrice - data.discount &gt; 1000)
+        shippingCost *= shipping.getDiscountThreshold();
+    <span class="kw">return</span> data.basePrice - data.discount + shippingCost;
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="split-temporary-variable-split-variable">
+  <div class="technique-header">
+    <h3 class="technique-name">Split Temporary Variable / Split Variable</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="kw">double</span> temp = 2 * (height + width);
+System.out.println(<span class="str">&quot;Perimeter: &quot;</span> + temp);
+temp = height * width;
+System.out.println(<span class="str">&quot;Area: &quot;</span> + temp);</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">double</span> perimeter = 2 * (height + width);
+System.out.println(<span class="str">&quot;Perimeter: &quot;</span> + perimeter);
+<span class="kw">double</span> area = height * width;
+System.out.println(<span class="str">&quot;Area: &quot;</span> + area);</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="unify-interfaces">
+  <div class="technique-header">
+    <h3 class="technique-name">Unify Interfaces</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Two classes used interchangeably but have different methods</span>
+<span class="kw">public</span> <span class="kw">class</span> XMLExporter {
+    <span class="kw">public</span> <span class="type">String</span> exportAsXml(Data data) { /* ... */ }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> JsonExporter {
+    <span class="kw">public</span> <span class="type">String</span> toJson(Data data) { /* ... */ }
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">interface</span> Exporter {
+    <span class="type">String</span> export(Data data);
+}
+
+<span class="kw">public</span> <span class="kw">class</span> XMLExporter <span class="kw">implements</span> Exporter {
+    <span class="kw">public</span> <span class="type">String</span> export(Data data) { /* ... */ }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> JsonExporter <span class="kw">implements</span> Exporter {
+    <span class="kw">public</span> <span class="type">String</span> export(Data data) { /* ... */ }
+}</code></pre>
+  </div>
+</div>
+
+<div class="technique-card" data-has-smells="no" data-categories="none" id="unify-interfaces-with-adapter">
+  <div class="technique-header">
+    <h3 class="technique-name">Unify Interfaces with Adapter</h3>
+    
+  </div>
+  <div class="smell-pills"><span class="no-smells">No mapped smells</span></div>
+  <div class="accordion-toggle" onclick="toggleAccordion(this)">
+    <span class="accordion-icon">&#9654;</span> Show example
+  </div>
+  <div class="accordion-body">
+    <p class="ba-label before-label">Before:</p>
+    <pre><code><span class="cmt">// Third-party class has incompatible interface</span>
+<span class="kw">public</span> <span class="kw">class</span> LegacyPrinter {
+    <span class="kw">public</span> <span class="kw">void</span> printReport(<span class="type">String</span> title, <span class="type">String</span> body) { /* ... */ }
+}
+
+<span class="cmt">// Your code expects:</span>
+<span class="kw">public</span> <span class="kw">interface</span> Printer {
+    <span class="kw">void</span> print(Document doc);
+}</code></pre>
+    <p class="ba-label after-label">After:</p>
+    <pre><code><span class="kw">public</span> <span class="kw">class</span> LegacyPrinterAdapter <span class="kw">implements</span> Printer {
+    <span class="kw">private</span> <span class="kw">final</span> LegacyPrinter legacy;
+
+    <span class="kw">public</span> LegacyPrinterAdapter(LegacyPrinter legacy) {
+        <span class="kw">this</span>.legacy = legacy;
+    }
+
+    <span class="kw">public</span> <span class="kw">void</span> print(Document doc) {
+        legacy.printReport(doc.getTitle(), doc.getBody());
+    }
+}
+<span class="cmt">// Now LegacyPrinter works through the Printer interface</span></code></pre>
+  </div>
+</div>
+
+<script>
+let mappingFilter = 'all';
+let activeCats = new Set();
+
+function setMapping(value, btn) {
+  mappingFilter = value;
+  btn.parentElement.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function toggleCat(cat, btn) {
+  const allBtn = document.querySelector('#cat-filters [data-cat="all"]');
+  if (cat === 'all') {
+    activeCats.clear();
+    document.querySelectorAll('#cat-filters .filter-btn').forEach(b => b.classList.remove('active'));
+    allBtn.classList.add('active');
+  } else {
+    allBtn.classList.remove('active');
+    if (activeCats.has(cat)) {
+      activeCats.delete(cat);
+      btn.classList.remove('active');
+      if (activeCats.size === 0) allBtn.classList.add('active');
+    } else {
+      activeCats.add(cat);
+      btn.classList.add('active');
+    }
+  }
+  applyFilters();
+}
+
+function applyFilters() {
+  const cards = document.querySelectorAll('.technique-card');
+  let shown = 0;
+  cards.forEach(card => {
+    const hasSmells = card.dataset.hasSmells;
+    const cardCats = card.dataset.categories.split(' ');
+    let passMapping = mappingFilter === 'all' || mappingFilter === hasSmells;
+    let passCat = activeCats.size === 0 || cardCats.some(c => activeCats.has(c));
+    if (activeCats.size > 0 && hasSmells === 'no') passCat = false;
+    if (passMapping && passCat) { card.style.display = ''; shown++; }
+    else { card.style.display = 'none'; }
+  });
+  document.getElementById('results-count').textContent = 'Showing ' + shown + ' of 110 techniques';
+}
+
+function toggleAccordion(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+applyFilters();
+</script>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

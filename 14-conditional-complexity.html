@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conditional Complexity — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Conditional Complexity</h1>
+<p class="aka">Also known as: Complex Conditional</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Conditional logic that has grown so tangled — deeply nested <code>if/else</code> trees, long chains of <code>&amp;&amp;</code> and <code>||</code>, repeated conditions scattered across methods — that understanding what the code actually decides requires tracing every branch with a pencil. The conditions may have started simple, but edge cases, exceptions, and business rule changes have accumulated until the logic reads like a legal contract.</p>
+
+<p>This smell overlaps with Switch Statements but is broader: it covers any conditional structure that has become hard to read, regardless of whether it's a switch, a chain of <code>if/else</code>, or a thicket of ternary operators. The key indicator is that you read the condition and don't immediately understand when and why each branch executes.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">InsuranceQuoteCalculator</span> {
+
+    <span class="kw">public double</span> <span class="fn">calculatePremium</span>(<span class="type">Applicant</span> applicant) {
+        <span class="kw">double</span> base = <span class="num">500</span>;
+
+        <span class="kw">if</span> (applicant.getAge() &lt; <span class="num">25</span>) {
+            base *= <span class="num">1.5</span>;
+            <span class="kw">if</span> (applicant.hasAccidents()) {
+                base *= <span class="num">2.0</span>;
+                <span class="kw">if</span> (applicant.getAccidentCount() &gt; <span class="num">3</span>) {
+                    base *= <span class="num">1.5</span>;
+                    <span class="kw">if</span> (applicant.getLastAccidentYearsAgo() &lt; <span class="num">1</span>) {
+                        base *= <span class="num">1.3</span>;
+                    }
+                }
+            } <span class="kw">else if</span> (applicant.getYearsLicensed() &lt; <span class="num">2</span>) {
+                base *= <span class="num">1.3</span>;
+            }
+        } <span class="kw">else if</span> (applicant.getAge() &lt; <span class="num">65</span>) {
+            <span class="kw">if</span> (applicant.hasAccidents()) {
+                base *= <span class="num">1.3</span>;
+                <span class="kw">if</span> (applicant.getAccidentCount() &gt; <span class="num">3</span>) {
+                    base *= <span class="num">1.2</span>;
+                }
+            }
+            <span class="kw">if</span> (applicant.getCreditScore() &lt; <span class="num">600</span>) {
+                base *= <span class="num">1.4</span>;
+            } <span class="kw">else if</span> (applicant.getCreditScore() &gt; <span class="num">750</span>) {
+                base *= <span class="num">0.9</span>;
+            }
+        } <span class="kw">else</span> {
+            base *= <span class="num">1.2</span>;
+            <span class="kw">if</span> (applicant.hasMedicalConditions()) {
+                base *= <span class="num">1.5</span>;
+                <span class="kw">if</span> (applicant.getMedicalRisk().equals(<span class="str">"high"</span>)) {
+                    base *= <span class="num">1.3</span>;
+                }
+            }
+        }
+
+        <span class="kw">if</span> (applicant.isMultiPolicy()) {
+            base *= <span class="num">0.85</span>;
+        }
+        <span class="kw">if</span> (applicant.isGoodStudent()) {
+            base *= <span class="num">0.9</span>;
+        }
+        <span class="kw">if</span> (applicant.hasDefensiveDrivingCourse()) {
+            base *= <span class="num">0.95</span>;
+        }
+        <span class="kw">if</span> (applicant.getVehicle().getAge() &gt; <span class="num">10</span>) {
+            base *= <span class="num">0.9</span>;
+        } <span class="kw">else if</span> (applicant.getVehicle().isLuxury()) {
+            base *= <span class="num">1.4</span>;
+        }
+
+        <span class="kw">return</span> base;
+    }
+}</code></pre>
+
+<p>Five levels of nesting in the age-based section. Multipliers scattered across dozens of conditions. The method is a single block of interleaved concerns: age risk, accident history, credit score, medical conditions, discounts, and vehicle factors — all tangled in one tree. Understanding the premium for a 23-year-old with two accidents and a good credit score requires tracing through nested branches manually.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Single Responsibility Principle</strong> and <strong>readability.</strong> The method handles age-based risk, accident risk, credit risk, medical risk, and discount eligibility — five distinct policies tangled together. Each is a separate business rule that should be independently readable, testable, and changeable.</p>
+
+<p>It also violates <strong>Open/Closed Principle</strong>: adding a new risk factor means weaving more conditions into an already unreadable tree.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Decompose Conditional</h3>
+
+<p>Extract each branch into a method whose name explains <em>why</em> the branch exists.</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">calculatePremium</span>(<span class="type">Applicant</span> applicant) {
+    <span class="kw">double</span> base = <span class="num">500</span>;
+
+    base *= <span class="fn">getAgeRiskFactor</span>(applicant);
+    base *= <span class="fn">getAccidentRiskFactor</span>(applicant);
+    base *= <span class="fn">getCreditFactor</span>(applicant);
+    base *= <span class="fn">getMedicalFactor</span>(applicant);
+    base *= <span class="fn">getDiscountFactor</span>(applicant);
+    base *= <span class="fn">getVehicleFactor</span>(applicant);
+
+    <span class="kw">return</span> base;
+}
+
+<span class="kw">private double</span> <span class="fn">getAgeRiskFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">if</span> (a.getAge() &lt; <span class="num">25</span>) <span class="kw">return</span> <span class="num">1.5</span>;
+    <span class="kw">if</span> (a.getAge() &gt;= <span class="num">65</span>) <span class="kw">return</span> <span class="num">1.2</span>;
+    <span class="kw">return</span> <span class="num">1.0</span>;
+}
+
+<span class="kw">private double</span> <span class="fn">getAccidentRiskFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">if</span> (!a.hasAccidents()) {
+        <span class="kw">if</span> (a.getAge() &lt; <span class="num">25</span> &amp;&amp; a.getYearsLicensed() &lt; <span class="num">2</span>) <span class="kw">return</span> <span class="num">1.3</span>;
+        <span class="kw">return</span> <span class="num">1.0</span>;
+    }
+    <span class="kw">double</span> factor = (a.getAge() &lt; <span class="num">25</span>) ? <span class="num">2.0</span> : <span class="num">1.3</span>;
+    <span class="kw">if</span> (a.getAccidentCount() &gt; <span class="num">3</span>) factor *= <span class="num">1.5</span>;
+    <span class="kw">if</span> (a.getAge() &lt; <span class="num">25</span> &amp;&amp; a.getLastAccidentYearsAgo() &lt; <span class="num">1</span>) factor *= <span class="num">1.3</span>;
+    <span class="kw">return</span> factor;
+}
+
+<span class="kw">private double</span> <span class="fn">getCreditFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">if</span> (a.getAge() &lt; <span class="num">25</span> || a.getAge() &gt;= <span class="num">65</span>) <span class="kw">return</span> <span class="num">1.0</span>;
+    <span class="kw">if</span> (a.getCreditScore() &lt; <span class="num">600</span>) <span class="kw">return</span> <span class="num">1.4</span>;
+    <span class="kw">if</span> (a.getCreditScore() &gt; <span class="num">750</span>) <span class="kw">return</span> <span class="num">0.9</span>;
+    <span class="kw">return</span> <span class="num">1.0</span>;
+}
+
+<span class="kw">private double</span> <span class="fn">getMedicalFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">if</span> (a.getAge() &lt; <span class="num">65</span> || !a.hasMedicalConditions()) <span class="kw">return</span> <span class="num">1.0</span>;
+    <span class="kw">if</span> (a.getMedicalRisk().equals(<span class="str">"high"</span>)) <span class="kw">return</span> <span class="num">1.5</span> * <span class="num">1.3</span>;
+    <span class="kw">return</span> <span class="num">1.5</span>;
+}
+
+<span class="kw">private double</span> <span class="fn">getDiscountFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">double</span> factor = <span class="num">1.0</span>;
+    <span class="kw">if</span> (a.isMultiPolicy()) factor *= <span class="num">0.85</span>;
+    <span class="kw">if</span> (a.isGoodStudent()) factor *= <span class="num">0.9</span>;
+    <span class="kw">if</span> (a.hasDefensiveDrivingCourse()) factor *= <span class="num">0.95</span>;
+    <span class="kw">return</span> factor;
+}
+
+<span class="kw">private double</span> <span class="fn">getVehicleFactor</span>(<span class="type">Applicant</span> a) {
+    <span class="kw">if</span> (a.getVehicle().getAge() &gt; <span class="num">10</span>) <span class="kw">return</span> <span class="num">0.9</span>;
+    <span class="kw">if</span> (a.getVehicle().isLuxury()) <span class="kw">return</span> <span class="num">1.4</span>;
+    <span class="kw">return</span> <span class="num">1.0</span>;
+}</code></pre>
+
+<p>The top-level method now reads as a list of named factors. Each factor method is flat, focused, and independently testable.</p>
+
+<hr>
+
+<h3>Replace Conditional with Strategy</h3>
+
+<p>When the branching represents fundamentally different algorithms (not just different constants), extract each into a strategy.</p>
+
+<p class="before-after">Before — different pricing logic by age bracket:</p>
+
+<pre><code><span class="kw">if</span> (age &lt; <span class="num">25</span>) {
+    <span class="cmt">// young driver pricing — 40 lines</span>
+} <span class="kw">else if</span> (age &lt; <span class="num">65</span>) {
+    <span class="cmt">// standard pricing — 30 lines</span>
+} <span class="kw">else</span> {
+    <span class="cmt">// senior pricing — 35 lines</span>
+}</code></pre>
+
+<p class="before-after">After — a strategy per bracket:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">AgePricingStrategy</span> {
+    <span class="kw">double</span> <span class="fn">applyRiskFactor</span>(<span class="type">Applicant</span> applicant, <span class="kw">double</span> basePremium);
+}
+
+<span class="kw">public class</span> <span class="type">YoungDriverPricing</span> <span class="kw">implements</span> <span class="type">AgePricingStrategy</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">applyRiskFactor</span>(<span class="type">Applicant</span> applicant, <span class="kw">double</span> base) {
+        <span class="cmt">// young driver specific logic, clean and focused</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">StandardPricing</span> <span class="kw">implements</span> <span class="type">AgePricingStrategy</span> { <span class="cmt">/* ... */</span> }
+<span class="kw">public class</span> <span class="type">SeniorPricing</span> <span class="kw">implements</span> <span class="type">AgePricingStrategy</span> { <span class="cmt">/* ... */</span> }</code></pre>
+
+<p>A factory selects the strategy:</p>
+
+<pre><code><span class="type">AgePricingStrategy</span> strategy = <span class="type">AgePricingStrategyFactory</span>.forAge(applicant.getAge());
+<span class="kw">double</span> adjusted = strategy.applyRiskFactor(applicant, base);</code></pre>
+
+<p>Each age bracket's logic lives in its own class — testable, replaceable, and invisible to the others.</p>
+
+<hr>
+
+<h3>Replace Nested Conditional with Guard Clauses</h3>
+
+<p>When deep nesting comes from checking preconditions, flatten it with early returns.</p>
+
+<p class="before-after">Before — deeply nested validation:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">calculateDiscount</span>(<span class="type">Order</span> order) {
+    <span class="kw">if</span> (order != <span class="kw">null</span>) {
+        <span class="kw">if</span> (order.isPaid()) {
+            <span class="kw">if</span> (order.getItems().size() &gt; <span class="num">5</span>) {
+                <span class="kw">if</span> (order.getTotal() &gt; <span class="num">100</span>) {
+                    <span class="kw">return</span> order.getTotal() * <span class="num">0.10</span>;
+                }
+            }
+        }
+    }
+    <span class="kw">return</span> <span class="num">0</span>;
+}</code></pre>
+
+<p class="before-after">After — guard clauses flatten the logic:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">calculateDiscount</span>(<span class="type">Order</span> order) {
+    <span class="kw">if</span> (order == <span class="kw">null</span>) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">if</span> (!order.isPaid()) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">if</span> (order.getItems().size() &lt;= <span class="num">5</span>) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">if</span> (order.getTotal() &lt;= <span class="num">100</span>) <span class="kw">return</span> <span class="num">0</span>;
+
+    <span class="kw">return</span> order.getTotal() * <span class="num">0.10</span>;
+}</code></pre>
+
+<p>Four levels of nesting become zero. The happy path is at the bottom, clearly visible. Each guard clause is a single, readable check.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

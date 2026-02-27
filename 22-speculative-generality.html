@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speculative Generality — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Speculative Generality</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Code that was written to handle future requirements that never materialized. Abstract classes with only one subclass. Interfaces implemented by a single class. Parameters that are never used in any real call. Hook methods that nobody overrides. Entire frameworks built to support flexibility that nobody asked for.</p>
+
+<p>The developer thought "someday we might need to…" and built the infrastructure in advance. That someday never came, but the infrastructure remains — adding complexity, requiring maintenance, and confusing every new developer who wonders what it's for.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">abstract</span> <span class="kw">class</span> AbstractNotificationDispatcher&lt;T <span class="kw">extends</span> Notification&gt; {
+    <span class="kw">protected</span> <span class="kw">abstract</span> NotificationChannel&lt;T&gt; getChannel();
+    <span class="kw">protected</span> <span class="kw">abstract</span> NotificationFormatter&lt;T&gt; getFormatter();
+    <span class="kw">protected</span> <span class="kw">abstract</span> NotificationValidator&lt;T&gt; getValidator();
+    <span class="kw">protected</span> <span class="kw">abstract</span> RetryPolicy getRetryPolicy();
+
+    <span class="kw">public</span> <span class="kw">final</span> <span class="kw">void</span> dispatch(T notification) {
+        <span class="kw">if</span> (!getValidator().isValid(notification)) {
+            <span class="kw">throw</span> <span class="kw">new</span> InvalidNotificationException(notification);
+        }
+        <span class="type">String</span> formatted = getFormatter().format(notification);
+        RetryPolicy policy = getRetryPolicy();
+        <span class="kw">int</span> attempts = 0;
+        <span class="kw">while</span> (attempts &lt; policy.getMaxRetries()) {
+            <span class="kw">try</span> {
+                getChannel().send(formatted);
+                <span class="kw">return</span>;
+            } <span class="kw">catch</span> (ChannelException e) {
+                attempts++;
+                <span class="kw">if</span> (attempts &gt;= policy.getMaxRetries()) <span class="kw">throw</span> e;
+                policy.waitBeforeRetry(attempts);
+            }
+        }
+    }
+}</code></pre>
+
+<p>There's only one subclass:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> EmailDispatcher <span class="kw">extends</span> AbstractNotificationDispatcher&lt;EmailNotification&gt; {
+    <span class="kw">protected</span> NotificationChannel&lt;EmailNotification&gt; getChannel() {
+        <span class="kw">return</span> <span class="kw">new</span> SmtpChannel();
+    }
+    <span class="kw">protected</span> NotificationFormatter&lt;EmailNotification&gt; getFormatter() {
+        <span class="kw">return</span> <span class="kw">new</span> EmailFormatter();
+    }
+    <span class="kw">protected</span> NotificationValidator&lt;EmailNotification&gt; getValidator() {
+        <span class="kw">return</span> <span class="kw">new</span> EmailValidator();
+    }
+    <span class="kw">protected</span> RetryPolicy getRetryPolicy() {
+        <span class="kw">return</span> <span class="kw">new</span> SimpleRetryPolicy(3);
+    }
+}</code></pre>
+
+<p>An abstract class, four abstract methods, generics, a retry framework, custom exceptions — all to support one email sender. The "what if we add SMS, push, and Slack?" never happened. The entire abstract hierarchy is speculative.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>YAGNI (You Aren't Gonna Need It).</strong> Build what you need now. Don't build infrastructure for requirements you don't have. Speculative code is dead weight with a maintenance cost — it must be read, understood, tested, and updated even though it serves no current purpose.</p>
+
+<p>It also violates <strong>simplicity</strong>: the simplest solution that works is always preferable. An abstract framework for one implementation is never the simplest solution.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Collapse Hierarchy</h3>
+
+<p>When an abstract class has only one subclass, merge them.</p>
+
+<p class="before-after"><strong>After</strong> — the abstract class is gone:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> EmailDispatcher {
+    <span class="kw">private</span> <span class="kw">final</span> SmtpChannel channel = <span class="kw">new</span> SmtpChannel();
+    <span class="kw">private</span> <span class="kw">final</span> EmailFormatter formatter = <span class="kw">new</span> EmailFormatter();
+    <span class="kw">private</span> <span class="kw">final</span> EmailValidator validator = <span class="kw">new</span> EmailValidator();
+    <span class="kw">private</span> <span class="kw">static</span> <span class="kw">final</span> <span class="kw">int</span> MAX_RETRIES = 3;
+
+    <span class="kw">public</span> <span class="kw">void</span> dispatch(EmailNotification notification) {
+        <span class="kw">if</span> (!validator.isValid(notification)) {
+            <span class="kw">throw</span> <span class="kw">new</span> IllegalArgumentException(<span class="str">&quot;Invalid notification&quot;</span>);
+        }
+        <span class="type">String</span> formatted = formatter.format(notification);
+        <span class="kw">for</span> (<span class="kw">int</span> attempt = 1; attempt &lt;= MAX_RETRIES; attempt++) {
+            <span class="kw">try</span> {
+                channel.send(formatted);
+                <span class="kw">return</span>;
+            } <span class="kw">catch</span> (ChannelException e) {
+                <span class="kw">if</span> (attempt == MAX_RETRIES) <span class="kw">throw</span> e;
+            }
+        }
+    }
+}</code></pre>
+
+<p>If SMS support is genuinely needed later, extract the interface at that point — driven by actual requirements, not speculation.</p>
+
+<h3>Remove unused parameters, methods, and interfaces</h3>
+
+<div class="note"><strong>Unused parameter:</strong> remove it from the signature.</div>
+
+<div class="note"><strong>Abstract method nobody overrides differently:</strong> make it concrete.</div>
+
+<div class="note"><strong>Interface with one implementor:</strong> inline it (unless it's needed for testing or dependency injection).</div>
+
+<div class="note"><strong>Hook method nobody hooks into:</strong> remove it.</div>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

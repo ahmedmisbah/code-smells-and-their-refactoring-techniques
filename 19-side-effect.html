@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Side Effect — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Side Effect</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A method that does something beyond its primary, advertised purpose — it performs hidden, secondary work that callers don't expect. The method's name says one thing, but its body does that thing <em>plus</em> something else that the caller can't see without reading the implementation. A query that also modifies state. A validation that also sets an error message. A check that also resizes a data structure.</p>
+
+<p>The problem is surprise. When a caller invokes <code>shouldGrow()</code>, they expect a yes-or-no answer. If the method also expands the collection's capacity, the caller has no idea that an innocent request for information caused a state change. The method is lying by omission — its name is a partial truth.</p>
+
+<p>Most side effects are harmful. Some are acceptable — an <code>Iterator.next()</code> that advances the cursor and returns the current element is a well-understood convention, and logging inside a method is generally tolerated. The smell applies when the secondary behavior is <em>unrelated</em> to the method's stated purpose and <em>invisible</em> to the caller.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">UserManager</span> {
+    <span class="kw">private</span> <span class="type">String</span> errorMessage = <span class="str">""</span>;
+    <span class="kw">private int</span> failedAttempts = <span class="num">0</span>;
+
+    <span class="kw">public boolean</span> <span class="fn">accept</span>(<span class="type">String</span> username, <span class="type">String</span> password) {
+        <span class="type">String</span> foundPassword = <span class="fn">find</span>(username);
+        <span class="kw">if</span> (foundPassword == <span class="kw">null</span> || !foundPassword.equals(password)) {
+            errorMessage = <span class="str">"Incorrect username or password. Please try again."</span>;
+            failedAttempts++;                  <span class="cmt">// side effect: tracks attempts</span>
+            <span class="kw">if</span> (failedAttempts &gt;= <span class="num">3</span>) {
+                <span class="fn">lockAccount</span>(username);         <span class="cmt">// side effect: locks account</span>
+            }
+            <span class="kw">return false</span>;
+        }
+        errorMessage = <span class="str">""</span>;
+        failedAttempts = <span class="num">0</span>;
+        <span class="fn">updateLastLogin</span>(username);             <span class="cmt">// side effect: updates login timestamp</span>
+        <span class="kw">return true</span>;
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> <span class="fn">find</span>(<span class="type">String</span> username) { <span class="cmt">/* ... */</span> <span class="kw">return null</span>; }
+    <span class="kw">private void</span> <span class="fn">lockAccount</span>(<span class="type">String</span> username) { <span class="cmt">/* ... */</span> }
+    <span class="kw">private void</span> <span class="fn">updateLastLogin</span>(<span class="type">String</span> username) { <span class="cmt">/* ... */</span> }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getErrorMessage</span>() { <span class="kw">return</span> errorMessage; }
+}</code></pre>
+
+<p>The method is called <code>accept</code> — its stated purpose is to determine whether a username and password are acceptable. But it also sets an error message field, increments a failed attempt counter, potentially locks the account, resets state on success, and updates the last login timestamp. A caller who just wants to check credentials gets five hidden behaviors for free.</p>
+
+<p>This creates problems:</p>
+
+<div class="note">
+<strong>Testing is painful.</strong> You can't test credential validation without also triggering account locking, timestamp updates, and error message state.
+</div>
+
+<div class="note">
+<strong>Reuse is impossible.</strong> If another part of the system needs to validate credentials without locking accounts (say, a "verify current password before changing it" flow), it can't use <code>accept</code> without triggering the side effects.
+</div>
+
+<div class="note">
+<strong>Debugging is hard.</strong> When a user reports their account was locked, you trace it to <code>accept</code>, but the method name gives no hint that it locks anything.
+</div>
+
+<p>Here's another example — a query that silently mutates:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">ShoppingCart</span> {
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+    <span class="kw">private boolean</span> totaled = <span class="kw">false</span>;
+    <span class="kw">private double</span> cachedTotal;
+
+    <span class="kw">public double</span> <span class="fn">getTotal</span>() {
+        items.removeIf(item -&gt; item.getQuantity() &lt;= <span class="num">0</span>);  <span class="cmt">// side effect: removes items</span>
+        cachedTotal = items.stream()
+            .mapToDouble(i -&gt; i.getPrice() * i.getQuantity())
+            .sum();
+        totaled = <span class="kw">true</span>;                                     <span class="cmt">// side effect: sets flag</span>
+        <span class="kw">return</span> cachedTotal;
+    }
+}</code></pre>
+
+<p><code>getTotal()</code> looks like a pure query, but it silently removes invalid items and sets a flag. Calling it twice on the same cart can produce different results — items disappear between calls. A getter that modifies the object is a trap.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Command-Query Separation (CQS).</strong> A method should either be a <em>command</em> (changes state, returns nothing) or a <em>query</em> (returns a value, changes nothing). Side effects violate this by smuggling commands into queries. When <code>getTotal()</code> both returns a value and removes items, it's doing both — and the caller only expects one.</p>
+
+<p>It also violates the <strong>Principle of Least Surprise</strong>: a method should do what its name says and nothing more. Hidden behavior undermines trust in the codebase — developers start reading every method's source before calling it, which defeats the purpose of abstraction.</p>
+
+<p><strong>Single Responsibility Principle (SRP)</strong> applies as well: the method is doing its stated job <em>and</em> unrelated jobs. Each side effect is a separate responsibility smuggled into a method that didn't ask for it.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Separate Commands from Queries</h3>
+
+<p>Split the method into pieces that each do one thing.</p>
+
+<p class="before-after">Before — <code>accept</code> validates and produces side effects:</p>
+
+<pre><code><span class="kw">public boolean</span> <span class="fn">accept</span>(<span class="type">String</span> username, <span class="type">String</span> password) {
+    <span class="type">String</span> foundPassword = <span class="fn">find</span>(username);
+    <span class="kw">if</span> (foundPassword == <span class="kw">null</span> || !foundPassword.equals(password)) {
+        errorMessage = <span class="str">"Incorrect username or password. Please try again."</span>;
+        failedAttempts++;
+        <span class="kw">if</span> (failedAttempts &gt;= <span class="num">3</span>) {
+            <span class="fn">lockAccount</span>(username);
+        }
+        <span class="kw">return false</span>;
+    }
+    errorMessage = <span class="str">""</span>;
+    failedAttempts = <span class="num">0</span>;
+    <span class="fn">updateLastLogin</span>(username);
+    <span class="kw">return true</span>;
+}</code></pre>
+
+<p class="before-after">After — validation is pure, side effects are explicit separate steps:</p>
+
+<pre><code><span class="kw">public boolean</span> <span class="fn">isValidCredentials</span>(<span class="type">String</span> username, <span class="type">String</span> password) {
+    <span class="type">String</span> foundPassword = <span class="fn">find</span>(username);
+    <span class="kw">return</span> foundPassword != <span class="kw">null</span> &amp;&amp; foundPassword.equals(password);
+}
+
+<span class="kw">public void</span> <span class="fn">recordFailedAttempt</span>(<span class="type">String</span> username) {
+    failedAttempts++;
+    <span class="kw">if</span> (failedAttempts &gt;= <span class="num">3</span>) {
+        <span class="fn">lockAccount</span>(username);
+    }
+}
+
+<span class="kw">public void</span> <span class="fn">recordSuccessfulLogin</span>(<span class="type">String</span> username) {
+    failedAttempts = <span class="num">0</span>;
+    <span class="fn">updateLastLogin</span>(username);
+}</code></pre>
+
+<p>The caller now orchestrates explicitly:</p>
+
+<pre><code><span class="kw">if</span> (userManager.isValidCredentials(username, password)) {
+    userManager.recordSuccessfulLogin(username);
+} <span class="kw">else</span> {
+    userManager.recordFailedAttempt(username);
+}</code></pre>
+
+<p>Every action is visible in the calling code. Nothing is hidden. <code>isValidCredentials</code> can be called from a "verify current password" flow without locking accounts. Each method is independently testable.</p>
+
+<hr>
+
+<h3>Make queries side-effect-free</h3>
+
+<p>For getters and queries, remove the mutation entirely.</p>
+
+<p class="before-after">Before — <code>getTotal()</code> silently removes items:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">getTotal</span>() {
+    items.removeIf(item -&gt; item.getQuantity() &lt;= <span class="num">0</span>);
+    cachedTotal = items.stream()
+        .mapToDouble(i -&gt; i.getPrice() * i.getQuantity())
+        .sum();
+    totaled = <span class="kw">true</span>;
+    <span class="kw">return</span> cachedTotal;
+}</code></pre>
+
+<p class="before-after">After — the query computes without mutating; cleanup is a separate command:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">getTotal</span>() {
+    <span class="kw">return</span> items.stream()
+        .filter(item -&gt; item.getQuantity() &gt; <span class="num">0</span>)
+        .mapToDouble(i -&gt; i.getPrice() * i.getQuantity())
+        .sum();
+}
+
+<span class="kw">public void</span> <span class="fn">removeInvalidItems</span>() {
+    items.removeIf(item -&gt; item.getQuantity() &lt;= <span class="num">0</span>);
+}</code></pre>
+
+<p><code>getTotal()</code> is now pure — call it ten times and get the same result, with no state changes. The cleanup is a deliberate, visible command.</p>
+
+<hr>
+
+<h3>Use return values instead of mutating shared state</h3>
+
+<p>When a method needs to communicate a result <em>and</em> an error, return a result object instead of silently setting a field.</p>
+
+<p class="before-after">Before — <code>accept</code> communicates failure by setting <code>errorMessage</code>:</p>
+
+<pre><code><span class="kw">public boolean</span> <span class="fn">accept</span>(<span class="type">String</span> username, <span class="type">String</span> password) {
+    <span class="cmt">// ... sets this.errorMessage as a side effect</span>
+}</code></pre>
+
+<p class="before-after">After — return a result that carries both the answer and the detail:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AuthResult</span> {
+    <span class="kw">private final boolean</span> success;
+    <span class="kw">private final</span> <span class="type">String</span> message;
+
+    <span class="kw">private</span> <span class="fn">AuthResult</span>(<span class="kw">boolean</span> success, <span class="type">String</span> message) {
+        <span class="kw">this</span>.success = success;
+        <span class="kw">this</span>.message = message;
+    }
+
+    <span class="kw">public static</span> <span class="type">AuthResult</span> <span class="fn">success</span>() {
+        <span class="kw">return new</span> <span class="type">AuthResult</span>(<span class="kw">true</span>, <span class="str">""</span>);
+    }
+
+    <span class="kw">public static</span> <span class="type">AuthResult</span> <span class="fn">failure</span>(<span class="type">String</span> reason) {
+        <span class="kw">return new</span> <span class="type">AuthResult</span>(<span class="kw">false</span>, reason);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isSuccess</span>() { <span class="kw">return</span> success; }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getMessage</span>() { <span class="kw">return</span> message; }
+}
+
+<span class="kw">public</span> <span class="type">AuthResult</span> <span class="fn">authenticate</span>(<span class="type">String</span> username, <span class="type">String</span> password) {
+    <span class="type">String</span> foundPassword = <span class="fn">find</span>(username);
+    <span class="kw">if</span> (foundPassword == <span class="kw">null</span> || !foundPassword.equals(password)) {
+        <span class="kw">return</span> <span class="type">AuthResult</span>.failure(<span class="str">"Incorrect username or password. Please try again."</span>);
+    }
+    <span class="kw">return</span> <span class="type">AuthResult</span>.success();
+}</code></pre>
+
+<p>No shared mutable state. The error message travels with the result, not through a hidden field. The method is pure — no side effects at all.</p>
+
+<hr>
+
+<h3>When side effects are acceptable</h3>
+
+<p>Not every side effect is a smell. Some are well-established conventions:</p>
+
+<div class="note">
+<strong>Iterator.next()</strong> advances the cursor <em>and</em> returns the current element. The dual behavior is the entire point of the method, and it's universally understood.
+</div>
+
+<div class="note">
+<strong>Logging</strong> inside a method is a side effect (it writes to a file or console), but it's non-functional — it doesn't affect the method's return value or the caller's state. Most teams accept it.
+</div>
+
+<div class="note">
+<strong>Caching</strong> a computed result for performance (memoization) is a side effect that doesn't change observable behavior — the method returns the same answer, just faster the second time.
+</div>
+
+<p>The key test: <strong>is the side effect surprising?</strong> If a reasonable developer reading only the method name and signature would not expect the secondary behavior, it's a smell. If the side effect <em>is</em> the method's known contract (like <code>next()</code>) or is non-functional (like logging), it's fine.</p>
+
+<p>Innovations like <strong>Aspect-Oriented Programming (AOP)</strong> provide ways to separate cross-cutting concerns like logging, auditing, and security from business logic entirely — so even the "acceptable" side effects can be extracted when a cleaner separation is desired.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

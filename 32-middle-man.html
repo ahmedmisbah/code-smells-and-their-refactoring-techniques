@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Middle Man — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Middle Man</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A class that exists only to delegate to another class — every method just forwards the call without adding any logic, transformation, or coordination. The class is an empty middleman, adding a layer of indirection with no value.</p>
+
+<p>Middle Man is the opposite extreme of Message Chains. Message Chains are too many intermediary objects to navigate through. The typical fix — Hide Delegate — adds delegating methods. But if you overdo it, every method on the class just calls through to someone else, and the class becomes a useless middle man. The cure for Message Chains, taken too far, becomes Middle Man.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Address</span> address;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">ContactInfo</span> contact;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Account</span> account;
+
+    <span class="kw">public</span> <span class="type">Customer</span>(<span class="type">Address</span> address, <span class="type">ContactInfo</span> contact, <span class="type">Account</span> account) {
+        <span class="kw">this</span>.address = address;
+        <span class="kw">this</span>.contact = contact;
+        <span class="kw">this</span>.account = account;
+    }
+
+    <span class="cmt">// every method is pure delegation — Customer adds nothing</span>
+
+    <span class="kw">public</span> <span class="type">String</span> getStreet() { <span class="kw">return</span> address.getStreet(); }
+    <span class="kw">public</span> <span class="type">String</span> getCity() { <span class="kw">return</span> address.getCity(); }
+    <span class="kw">public</span> <span class="type">String</span> getState() { <span class="kw">return</span> address.getState(); }
+    <span class="kw">public</span> <span class="type">String</span> getZipCode() { <span class="kw">return</span> address.getZipCode(); }
+    <span class="kw">public</span> <span class="type">String</span> getCountry() { <span class="kw">return</span> address.getCountry(); }
+
+    <span class="kw">public</span> <span class="type">String</span> getEmail() { <span class="kw">return</span> contact.getEmail(); }
+    <span class="kw">public</span> <span class="type">String</span> getPhone() { <span class="kw">return</span> contact.getPhone(); }
+    <span class="kw">public</span> <span class="type">String</span> getFax() { <span class="kw">return</span> contact.getFax(); }
+
+    <span class="kw">public</span> <span class="kw">double</span> getBalance() { <span class="kw">return</span> account.getBalance(); }
+    <span class="kw">public</span> <span class="kw">void</span> deposit(<span class="kw">double</span> amount) { account.deposit(amount); }
+    <span class="kw">public</span> <span class="kw">void</span> withdraw(<span class="kw">double</span> amount) { account.withdraw(amount); }
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">Transaction</span>&gt; getTransactions() { <span class="kw">return</span> account.getTransactions(); }
+}</code></pre>
+
+<p>Twelve methods, every one a single-line forwarder. <code>Customer</code> doesn't decide anything, transform anything, or coordinate anything. It's a pass-through shell. Callers might as well talk to <code>Address</code>, <code>ContactInfo</code>, and <code>Account</code> directly.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Simplicity and meaningful abstraction.</strong> A class should justify its existence by providing behavior, enforcing invariants, or offering a genuinely useful abstraction. A pure delegator provides none of these — it's a layer of indirection that adds cognitive overhead (more classes to understand) without adding value.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Remove Middle Man — let callers talk directly to the delegate</h3>
+
+<p>Expose the delegate and let callers access it.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Address</span> address;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">ContactInfo</span> contact;
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">Account</span> account;
+
+    <span class="kw">public</span> <span class="type">Customer</span>(<span class="type">String</span> name, <span class="type">Address</span> address,
+                     <span class="type">ContactInfo</span> contact, <span class="type">Account</span> account) {
+        <span class="kw">this</span>.name = name;
+        <span class="kw">this</span>.address = address;
+        <span class="kw">this</span>.contact = contact;
+        <span class="kw">this</span>.account = account;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getName() { <span class="kw">return</span> name; }
+    <span class="kw">public</span> <span class="type">Address</span> getAddress() { <span class="kw">return</span> address; }
+    <span class="kw">public</span> <span class="type">ContactInfo</span> getContact() { <span class="kw">return</span> contact; }
+    <span class="kw">public</span> <span class="type">Account</span> getAccount() { <span class="kw">return</span> account; }
+}</code></pre>
+
+<p>Callers use <code>customer.getAddress().getCity()</code> instead of <code>customer.getCity()</code>. Yes, that's a message chain — but it's a <em>short</em> one (two levels), and it correctly reflects the domain structure: a customer <em>has</em> an address.</p>
+
+<hr>
+
+<h3>The balance between Message Chains and Middle Man</h3>
+
+<p>These two smells pull in opposite directions:</p>
+
+<div class="note"><strong>Message Chains</strong> say "don't reach through multiple objects — add delegation."</div>
+
+<div class="note"><strong>Middle Man</strong> says "don't delegate everything — let callers access the object."</div>
+
+<p>The balance is: <strong>delegate when the class adds value</strong> (coordination, transformation, invariant enforcement, or hiding an unstable internal structure). <strong>Expose the delegate when the class adds nothing</strong> and the internal structure is stable and well-known.</p>
+
+<p>A good heuristic: if more than half the methods in a class are single-line delegations, you probably have a middle man. If the delegation methods add validation, logging, access control, or combine results from multiple delegates, the class is earning its keep.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

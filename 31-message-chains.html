@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Message Chains — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Message Chains</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A series of calls chained together where each call returns an object that the next call is made on: <code>order.getCustomer().getAddress().getCity().toUpperCase()</code>. The caller depends on the entire chain of intermediate objects — if any link changes, the caller breaks.</p>
+
+<p>The problem isn't the dot syntax — fluent APIs and stream pipelines chain deliberately and are fine. The problem is when the chain navigates a <em>structure</em> of domain objects, reaching deep into a graph to extract something buried several levels down. The caller is coupled to the exact shape of the object graph, not just to the object it directly holds.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> InvoiceGenerator {
+
+    <span class="kw">public</span> <span class="type">String</span> generateHeader(<span class="type">Order</span> order) {
+        <span class="cmt">// four levels deep</span>
+        <span class="type">String</span> companyName = order.getCustomer()
+                                   .getCompany()
+                                   .getLegalEntity()
+                                   .getRegisteredName();
+
+        <span class="type">String</span> billingCity = order.getCustomer()
+                                  .getBillingAddress()
+                                  .getCity();
+
+        <span class="type">String</span> taxId = order.getCustomer()
+                            .getCompany()
+                            .getLegalEntity()
+                            .getTaxId();
+
+        <span class="type">String</span> currency = order.getPaymentTerms()
+                               .getPreferredCurrency()
+                               .getCode();
+
+        <span class="kw">return</span> <span class="type">String</span>.format(<span class="str">&quot;Invoice for %s (%s)\n%s\nTax ID: %s\nCurrency: %s&quot;</span>,
+            companyName, billingCity, billingCity, taxId, currency);
+    }
+}</code></pre>
+
+<p><code>InvoiceGenerator</code> knows that an order has a customer, who has a company, which has a legal entity, which has a registered name and tax ID. It also knows the customer has a billing address with a city, and the order has payment terms with a preferred currency with a code. That's knowledge of five classes deep. If <code>Company</code> moves <code>taxId</code> to a different sub-object, <code>InvoiceGenerator</code> breaks — even though it has nothing to do with company structure.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Law of Demeter (Principle of Least Knowledge).</strong> A method should only talk to its immediate friends — the object itself, its fields, parameters passed to it, and objects it creates. Reaching through a chain of <code>getX().getY().getZ()</code> talks to strangers — objects the caller was never meant to know about.</p>
+
+<p>It also creates <strong>structural coupling</strong>: the caller is coupled not to one class but to an entire graph of classes and their relationships.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Hide Delegate — introduce intermediary methods</h3>
+
+<p>Let each object answer questions about itself rather than exposing its internal structure.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Order</span> {
+    <span class="kw">private</span> <span class="type">Customer</span> customer;
+    <span class="kw">private</span> <span class="type">PaymentTerms</span> paymentTerms;
+
+    <span class="kw">public</span> <span class="type">String</span> getCustomerCompanyName() {
+        <span class="kw">return</span> customer.getCompanyName();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getBillingCity() {
+        <span class="kw">return</span> customer.getBillingCity();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getCustomerTaxId() {
+        <span class="kw">return</span> customer.getTaxId();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getCurrencyCode() {
+        <span class="kw">return</span> paymentTerms.getCurrencyCode();
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> <span class="type">Customer</span> {
+    <span class="kw">private</span> <span class="type">Company</span> company;
+    <span class="kw">private</span> <span class="type">Address</span> billingAddress;
+
+    <span class="kw">public</span> <span class="type">String</span> getCompanyName() {
+        <span class="kw">return</span> company.getRegisteredName();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getBillingCity() {
+        <span class="kw">return</span> billingAddress.getCity();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getTaxId() {
+        <span class="kw">return</span> company.getTaxId();
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> <span class="type">Company</span> {
+    <span class="kw">private</span> <span class="type">LegalEntity</span> legalEntity;
+
+    <span class="kw">public</span> <span class="type">String</span> getRegisteredName() {
+        <span class="kw">return</span> legalEntity.getRegisteredName();
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getTaxId() {
+        <span class="kw">return</span> legalEntity.getTaxId();
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> <span class="type">PaymentTerms</span> {
+    <span class="kw">private</span> <span class="type">Currency</span> preferredCurrency;
+
+    <span class="kw">public</span> <span class="type">String</span> getCurrencyCode() {
+        <span class="kw">return</span> preferredCurrency.getCode();
+    }
+}</code></pre>
+
+<p>Now <code>InvoiceGenerator</code> talks only to <code>Order</code>:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> InvoiceGenerator {
+    <span class="kw">public</span> <span class="type">String</span> generateHeader(<span class="type">Order</span> order) {
+        <span class="kw">return</span> <span class="type">String</span>.format(<span class="str">&quot;Invoice for %s (%s)\n%s\nTax ID: %s\nCurrency: %s&quot;</span>,
+            order.getCustomerCompanyName(),
+            order.getBillingCity(),
+            order.getBillingCity(),
+            order.getCustomerTaxId(),
+            order.getCurrencyCode());
+    }
+}</code></pre>
+
+<p>One level deep. If the internal structure changes, only the delegation methods change — not the callers.</p>
+
+<hr>
+
+<h3>When chains are acceptable</h3>
+
+<p>Not all chains are message chains in the smell sense:</p>
+
+<div class="note"><strong>Fluent APIs</strong> — <code>builder.setName("x").setAge(30).build()</code> returns <code>this</code> at each step. The caller is coupled to one class, not a graph.</div>
+
+<div class="note"><strong>Stream pipelines</strong> — <code>.stream().filter(...).map(...).collect(...)</code> is a pipeline over one collection, not a navigation through a domain structure.</div>
+
+<div class="note"><strong>Configuration chains</strong> — <code>config.database().connection().timeout()</code> may be fine if the config hierarchy is stable and the chain represents a deliberate navigation API.</div>
+
+<p>The smell applies specifically when the chain navigates through <em>domain objects</em> with different responsibilities.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inappropriate Intimacy — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Inappropriate Intimacy</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Two classes that know too much about each other's internal details — they reach into each other's private fields, call each other's internal methods, or depend on implementation details that should be hidden. The classes are tangled in a relationship where neither can change without breaking the other.</p>
+
+<p>A healthy relationship between classes is through well-defined public interfaces — narrow, stable contracts. Inappropriate intimacy is when classes bypass those contracts and depend on each other's guts. One class reads another's private fields through reflection, or relies on the order of its internal list, or calls a method that was meant to be a private helper. The coupling is deep, fragile, and invisible from the public API.</p>
+
+<p>This smell is especially common between classes that were split from a single class — the split happened, but the two halves still behave as if they're one unit, constantly reaching across the boundary.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Order</span> {
+    <span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();  <span class="cmt">// package-private, not truly private</span>
+    <span class="kw">double</span> discountPercentage;
+    <span class="type">Customer</span> customer;
+
+    <span class="kw">public</span> <span class="kw">void</span> addItem(<span class="type">OrderItem</span> item) {
+        items.add(item);
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> OrderPrinter {
+
+    <span class="kw">public</span> <span class="type">String</span> print(<span class="type">Order</span> order) {
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        sb.append(<span class="str">&quot;Customer: &quot;</span>).append(order.customer.name).append(<span class="str">&quot;\n&quot;</span>);
+
+        <span class="cmt">// reaches directly into Order&#x27;s internal list</span>
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; order.items.size(); i++) {
+            <span class="type">OrderItem</span> item = order.items.get(i);
+            <span class="kw">double</span> lineTotal = item.price * item.quantity;
+
+            <span class="cmt">// knows about Order&#x27;s internal discount field</span>
+            <span class="kw">if</span> (order.discountPercentage &gt; 0) {
+                lineTotal *= (1 - order.discountPercentage / 100);
+            }
+            sb.append(item.name).append(<span class="str">&quot;: $&quot;</span>)
+              .append(<span class="type">String</span>.format(<span class="str">&quot;%.2f&quot;</span>, lineTotal)).append(<span class="str">&quot;\n&quot;</span>);
+        }
+
+        <span class="cmt">// computes the total — but this is Order&#x27;s job</span>
+        <span class="kw">double</span> total = 0;
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.items) {
+            total += item.price * item.quantity;
+        }
+        total *= (1 - order.discountPercentage / 100);
+        sb.append(<span class="str">&quot;Total: $&quot;</span>).append(<span class="type">String</span>.format(<span class="str">&quot;%.2f&quot;</span>, total));
+        <span class="kw">return</span> sb.toString();
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> OrderValidator {
+
+    <span class="kw">public</span> <span class="kw">boolean</span> validate(<span class="type">Order</span> order) {
+        <span class="cmt">// reaches into Order&#x27;s internals again</span>
+        <span class="kw">if</span> (order.items.isEmpty()) <span class="kw">return</span> <span class="kw">false</span>;
+        <span class="kw">if</span> (order.customer == <span class="kw">null</span>) <span class="kw">return</span> <span class="kw">false</span>;
+
+        <span class="cmt">// knows about the internal structure of items</span>
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.items) {
+            <span class="kw">if</span> (item.price &lt; 0) <span class="kw">return</span> <span class="kw">false</span>;
+            <span class="kw">if</span> (item.quantity &lt;= 0) <span class="kw">return</span> <span class="kw">false</span>;
+        }
+
+        <span class="cmt">// knows about discount rules that belong to Order</span>
+        <span class="kw">if</span> (order.discountPercentage &gt; 50) <span class="kw">return</span> <span class="kw">false</span>;
+        <span class="kw">return</span> <span class="kw">true</span>;
+    }
+}</code></pre>
+
+<p>Both <code>OrderPrinter</code> and <code>OrderValidator</code> reach directly into <code>Order</code>'s fields. They know that items are stored in a <code>List</code>, that discount is a percentage stored as a double, that customer is a direct reference. If <code>Order</code> changes its internal representation — say, wrapping items in an immutable collection, or changing discount from a percentage to a <code>Discount</code> object — both classes break.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Encapsulation.</strong> The entire point of encapsulation is that a class hides its internals behind a public interface. Inappropriate intimacy violates this by letting other classes depend on details they shouldn't see. The class boundary exists on paper but not in practice.</p>
+
+<p>It also violates the <strong>Law of Demeter</strong> (talk to your friends, not to your friends' friends): <code>order.customer.name</code> chains through two objects, creating a dependency on both <code>Order</code>'s internal structure and <code>Customer</code>'s fields.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Hide Delegate — expose behavior, not internals</h3>
+
+<p>Make <code>Order</code> responsible for answering questions about itself. Other classes ask, they don't reach in.</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> <span class="type">Order</span> {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+    <span class="kw">private</span> <span class="kw">double</span> discountPercentage;
+    <span class="kw">private</span> <span class="type">Customer</span> customer;
+
+    <span class="kw">public</span> <span class="kw">void</span> addItem(<span class="type">OrderItem</span> item) {
+        items.add(item);
+    }
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; getItems() {
+        <span class="kw">return</span> <span class="type">Collections</span>.unmodifiableList(items);
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getCustomerName() {
+        <span class="kw">return</span> customer.getName();
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> getDiscountedTotal() {
+        <span class="kw">double</span> total = items.stream()
+            .mapToDouble(<span class="type">OrderItem</span>::getLineTotal)
+            .sum();
+        <span class="kw">return</span> total * (1 - discountPercentage / 100);
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> getDiscountedLineTotal(<span class="type">OrderItem</span> item) {
+        <span class="kw">double</span> lineTotal = item.getLineTotal();
+        <span class="kw">if</span> (discountPercentage &gt; 0) {
+            lineTotal *= (1 - discountPercentage / 100);
+        }
+        <span class="kw">return</span> lineTotal;
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> hasItems() { <span class="kw">return</span> !items.isEmpty(); }
+    <span class="kw">public</span> <span class="kw">boolean</span> hasCustomer() { <span class="kw">return</span> customer != <span class="kw">null</span>; }
+    <span class="kw">public</span> <span class="kw">boolean</span> isDiscountReasonable() { <span class="kw">return</span> discountPercentage &lt;= 50; }
+}</code></pre>
+
+<p>Now <code>OrderPrinter</code> and <code>OrderValidator</code> use the public interface:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> OrderPrinter {
+    <span class="kw">public</span> <span class="type">String</span> print(<span class="type">Order</span> order) {
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        sb.append(<span class="str">&quot;Customer: &quot;</span>).append(order.getCustomerName()).append(<span class="str">&quot;\n&quot;</span>);
+
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+            <span class="kw">double</span> lineTotal = order.getDiscountedLineTotal(item);
+            sb.append(item.getName()).append(<span class="str">&quot;: $&quot;</span>)
+              .append(<span class="type">String</span>.format(<span class="str">&quot;%.2f&quot;</span>, lineTotal)).append(<span class="str">&quot;\n&quot;</span>);
+        }
+
+        sb.append(<span class="str">&quot;Total: $&quot;</span>)
+          .append(<span class="type">String</span>.format(<span class="str">&quot;%.2f&quot;</span>, order.getDiscountedTotal()));
+        <span class="kw">return</span> sb.toString();
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> OrderValidator {
+    <span class="kw">public</span> <span class="kw">boolean</span> validate(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (!order.hasItems()) <span class="kw">return</span> <span class="kw">false</span>;
+        <span class="kw">if</span> (!order.hasCustomer()) <span class="kw">return</span> <span class="kw">false</span>;
+        <span class="kw">if</span> (!order.isDiscountReasonable()) <span class="kw">return</span> <span class="kw">false</span>;
+
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+            <span class="kw">if</span> (!item.isValid()) <span class="kw">return</span> <span class="kw">false</span>;
+        }
+        <span class="kw">return</span> <span class="kw">true</span>;
+    }
+}</code></pre>
+
+<p>Neither class knows how <code>Order</code> stores its items, how discounts are represented, or how the customer is linked. <code>Order</code> can change its internals freely.</p>
+
+<hr>
+
+<h3>Move Method — move behavior to the class that owns the data</h3>
+
+<p>When a method in one class does most of its work with another class's data, move it. The total calculation in <code>OrderPrinter</code> belongs on <code>Order</code> — and we've already moved it there as <code>getDiscountedTotal()</code>.</p>
+
+<h3>Extract Class — when two classes are too intimate, merge the shared concern</h3>
+
+<p>If two classes are tightly intertwined because they share a concept, extract that concept into its own class that both depend on through a clean interface.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

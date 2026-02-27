@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Divergent Change — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Divergent Change</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A single class that needs to be modified for many different, unrelated reasons. You open <code>Employee</code> to change tax logic. Next week you open it again to change the reporting format. The week after that you open it again to update the validation rules. Each change is for a different concern, yet they all converge on the same class. The class is a magnet for change — not because it's central to the design, but because it has absorbed responsibilities that don't belong together.</p>
+
+<p>Divergent Change is the <em>opposite</em> of Shotgun Surgery. In Shotgun Surgery, one change touches many classes. In Divergent Change, many changes touch one class. They're mirror images of the same underlying problem — misplaced responsibility — but they feel different in practice. Divergent Change feels like "this class keeps changing for reasons that have nothing to do with each other."</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderProcessor</span> {
+
+    <span class="cmt">// ---- validation concern ----</span>
+    <span class="kw">public boolean</span> <span class="fn">validate</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (order.getItems().isEmpty()) <span class="kw">return false</span>;
+        <span class="kw">if</span> (order.getCustomer() == <span class="kw">null</span>) <span class="kw">return false</span>;
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+            <span class="kw">if</span> (item.getQuantity() &lt;= <span class="num">0</span>) <span class="kw">return false</span>;
+            <span class="kw">if</span> (item.getPrice() &lt; <span class="num">0</span>) <span class="kw">return false</span>;
+            <span class="kw">if</span> (!<span class="fn">inventoryCheck</span>(item)) <span class="kw">return false</span>;
+        }
+        <span class="kw">return true</span>;
+    }
+
+    <span class="kw">private boolean</span> <span class="fn">inventoryCheck</span>(<span class="type">OrderItem</span> item) {
+        <span class="cmt">// connects to inventory service</span>
+        <span class="kw">return true</span>;
+    }
+
+    <span class="cmt">// ---- pricing concern ----</span>
+    <span class="kw">public double</span> <span class="fn">calculateTotal</span>(<span class="type">Order</span> order) {
+        <span class="kw">double</span> total = <span class="num">0</span>;
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+            total += item.getPrice() * item.getQuantity();
+        }
+        total -= <span class="fn">getDiscount</span>(order);
+        total += <span class="fn">calculateTax</span>(order, total);
+        <span class="kw">return</span> total;
+    }
+
+    <span class="kw">private double</span> <span class="fn">getDiscount</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (order.getCustomer().isVip()) <span class="kw">return</span> <span class="fn">calculateTotal</span>(order) * <span class="num">0.10</span>;
+        <span class="kw">return</span> <span class="num">0</span>;
+    }
+
+    <span class="kw">private double</span> <span class="fn">calculateTax</span>(<span class="type">Order</span> order, <span class="kw">double</span> subtotal) {
+        <span class="cmt">// complex tax logic by region</span>
+        <span class="kw">return</span> subtotal * <span class="num">0.08</span>;
+    }
+
+    <span class="cmt">// ---- persistence concern ----</span>
+    <span class="kw">public void</span> <span class="fn">save</span>(<span class="type">Order</span> order) {
+        <span class="cmt">// opens database connection</span>
+        <span class="cmt">// maps fields to columns</span>
+        <span class="cmt">// executes INSERT</span>
+    }
+
+    <span class="kw">public</span> <span class="type">Order</span> <span class="fn">findById</span>(<span class="type">String</span> id) {
+        <span class="cmt">// queries database</span>
+        <span class="cmt">// maps rows to Order object</span>
+        <span class="kw">return null</span>;
+    }
+
+    <span class="cmt">// ---- notification concern ----</span>
+    <span class="kw">public void</span> <span class="fn">notifyCustomer</span>(<span class="type">Order</span> order) {
+        <span class="type">String</span> email = order.getCustomer().getEmail();
+        <span class="type">String</span> body = <span class="fn">formatConfirmation</span>(order);
+        <span class="cmt">// sends email</span>
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> <span class="fn">formatConfirmation</span>(<span class="type">Order</span> order) {
+        <span class="cmt">// builds HTML email body</span>
+        <span class="kw">return</span> <span class="str">""</span>;
+    }
+
+    <span class="cmt">// ---- reporting concern ----</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generateReport</span>(<span class="type">List</span>&lt;<span class="type">Order</span>&gt; orders) {
+        <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+        <span class="cmt">// formats orders into a CSV report</span>
+        <span class="kw">return</span> sb.toString();
+    }
+}</code></pre>
+
+<p>Five unrelated reasons to change this class: validation rules change, pricing/tax rules change, the database schema changes, the email template changes, the report format changes. Each change is a different concern, but they all require opening and editing <code>OrderProcessor</code>.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Single Responsibility Principle (SRP).</strong> A class should have only one reason to change. <code>OrderProcessor</code> has at least five. Each responsibility is an axis of change, and they're all independent — tax law has nothing to do with email templates — yet they're coupled in the same file. Changing one risks accidentally breaking another.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The primary refactoring is <strong>Extract Class</strong>: pull each responsibility into its own class.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderValidator</span> {
+    <span class="kw">public boolean</span> <span class="fn">validate</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (order.getItems().isEmpty()) <span class="kw">return false</span>;
+        <span class="kw">if</span> (order.getCustomer() == <span class="kw">null</span>) <span class="kw">return false</span>;
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+            <span class="kw">if</span> (item.getQuantity() &lt;= <span class="num">0</span>) <span class="kw">return false</span>;
+            <span class="kw">if</span> (item.getPrice() &lt; <span class="num">0</span>) <span class="kw">return false</span>;
+            <span class="kw">if</span> (!<span class="fn">inventoryCheck</span>(item)) <span class="kw">return false</span>;
+        }
+        <span class="kw">return true</span>;
+    }
+
+    <span class="kw">private boolean</span> <span class="fn">inventoryCheck</span>(<span class="type">OrderItem</span> item) { <span class="kw">return true</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">OrderPricingService</span> {
+    <span class="kw">public double</span> <span class="fn">calculateTotal</span>(<span class="type">Order</span> order) {
+        <span class="kw">double</span> subtotal = order.getItems().stream()
+            .mapToDouble(i -&gt; i.getPrice() * i.getQuantity())
+            .sum();
+        <span class="kw">double</span> discount = <span class="fn">getDiscount</span>(order, subtotal);
+        <span class="kw">double</span> tax = <span class="fn">calculateTax</span>(order, subtotal - discount);
+        <span class="kw">return</span> subtotal - discount + tax;
+    }
+
+    <span class="kw">private double</span> <span class="fn">getDiscount</span>(<span class="type">Order</span> order, <span class="kw">double</span> subtotal) {
+        <span class="kw">if</span> (order.getCustomer().isVip()) <span class="kw">return</span> subtotal * <span class="num">0.10</span>;
+        <span class="kw">return</span> <span class="num">0</span>;
+    }
+
+    <span class="kw">private double</span> <span class="fn">calculateTax</span>(<span class="type">Order</span> order, <span class="kw">double</span> taxable) {
+        <span class="kw">return</span> taxable * <span class="num">0.08</span>;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">OrderRepository</span> {
+    <span class="kw">public void</span> <span class="fn">save</span>(<span class="type">Order</span> order) { <span class="cmt">/* database logic */</span> }
+    <span class="kw">public</span> <span class="type">Order</span> <span class="fn">findById</span>(<span class="type">String</span> id) { <span class="kw">return null</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">OrderNotificationService</span> {
+    <span class="kw">public void</span> <span class="fn">notifyCustomer</span>(<span class="type">Order</span> order) {
+        <span class="type">String</span> body = <span class="fn">formatConfirmation</span>(order);
+        <span class="cmt">// sends email</span>
+    }
+
+    <span class="kw">private</span> <span class="type">String</span> <span class="fn">formatConfirmation</span>(<span class="type">Order</span> order) { <span class="kw">return</span> <span class="str">""</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">OrderReportGenerator</span> {
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">generateReport</span>(<span class="type">List</span>&lt;<span class="type">Order</span>&gt; orders) {
+        <span class="cmt">// formats CSV</span>
+        <span class="kw">return</span> <span class="str">""</span>;
+    }
+}</code></pre>
+
+<p>Now each class has exactly one reason to change. Tax law changes? Edit <code>OrderPricingService</code>. Database migration? Edit <code>OrderRepository</code>. Email redesign? Edit <code>OrderNotificationService</code>. No class is touched for reasons that aren't its own.</p>
+
+<p>If the original class was being used as a coordinator, you can keep a thin facade:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">OrderProcessor</span> {
+    <span class="kw">private final</span> <span class="type">OrderValidator</span> validator;
+    <span class="kw">private final</span> <span class="type">OrderPricingService</span> pricing;
+    <span class="kw">private final</span> <span class="type">OrderRepository</span> repository;
+    <span class="kw">private final</span> <span class="type">OrderNotificationService</span> notifications;
+
+    <span class="kw">public</span> <span class="fn">OrderProcessor</span>(<span class="type">OrderValidator</span> validator,
+                           <span class="type">OrderPricingService</span> pricing,
+                           <span class="type">OrderRepository</span> repository,
+                           <span class="type">OrderNotificationService</span> notifications) {
+        <span class="kw">this</span>.validator = validator;
+        <span class="kw">this</span>.pricing = pricing;
+        <span class="kw">this</span>.repository = repository;
+        <span class="kw">this</span>.notifications = notifications;
+    }
+
+    <span class="kw">public void</span> <span class="fn">process</span>(<span class="type">Order</span> order) {
+        <span class="kw">if</span> (!validator.validate(order)) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid order"</span>);
+        }
+        <span class="kw">double</span> total = pricing.calculateTotal(order);
+        order.setTotal(total);
+        repository.save(order);
+        notifications.notifyCustomer(order);
+    }
+}</code></pre>
+
+<p>The coordinator delegates — it doesn't <em>contain</em> the logic. Each concern lives in its own class, changes independently, and is testable in isolation.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

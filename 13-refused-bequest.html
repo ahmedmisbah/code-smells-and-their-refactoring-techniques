@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Refused Bequest — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Refused Bequest</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A subclass inherits methods or fields from a parent but doesn't use them — or worse, actively overrides them to do nothing or throw exceptions. The child takes the inheritance but refuses the bequest. The parent says "you can do X, Y, and Z" and the child says "actually, I don't do Z — please ignore that."</p>
+
+<p>This usually means the inheritance hierarchy is wrong. The subclass isn't really a special case of the parent — it just happens to share some code. Inheritance was used for code reuse when composition would have been more honest.</p>
+
+<p>The classic example: a <code>Stack</code> that extends <code>ArrayList</code>. A stack isn't a list — it doesn't support <code>add(index, element)</code> or <code>get(index)</code> — but it inherits those methods. The inherited interface is a lie.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">Bird</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getName</span>() { <span class="kw">return</span> name; }
+
+    <span class="kw">public void</span> <span class="fn">fly</span>() {
+        <span class="type">System</span>.out.println(name + <span class="str">" is flying"</span>);
+    }
+
+    <span class="kw">public void</span> <span class="fn">layEggs</span>() {
+        <span class="type">System</span>.out.println(name + <span class="str">" laid eggs"</span>);
+    }
+
+    <span class="kw">public double</span> <span class="fn">getAltitude</span>() {
+        <span class="kw">return</span> <span class="num">100.0</span>; <span class="cmt">// default cruising altitude</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Penguin</span> <span class="kw">extends</span> <span class="type">Bird</span> {
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">fly</span>() {
+        <span class="kw">throw new</span> <span class="type">UnsupportedOperationException</span>(<span class="str">"Penguins can't fly"</span>);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">getAltitude</span>() {
+        <span class="kw">return</span> <span class="num">0</span>; <span class="cmt">// meaningless — but forced to implement</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">swim</span>() {
+        <span class="type">System</span>.out.println(getName() + <span class="str">" is swimming"</span>);
+    }
+}</code></pre>
+
+<p><code>Penguin</code> inherits <code>fly()</code> and <code>getAltitude()</code> but refuses both — one throws, the other returns a meaningless value. Any code that receives a <code>Bird</code> and calls <code>fly()</code> will blow up if it gets a <code>Penguin</code>. The contract of the parent is violated.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">BirdTracker</span> {
+    <span class="kw">public void</span> <span class="fn">trackMigration</span>(<span class="type">List</span>&lt;<span class="type">Bird</span>&gt; flock) {
+        <span class="kw">for</span> (<span class="type">Bird</span> bird : flock) {
+            bird.fly(); <span class="cmt">// crashes on Penguins</span>
+            <span class="kw">double</span> alt = bird.getAltitude();
+            <span class="fn">logPosition</span>(bird.getName(), alt);
+        }
+    }
+}</code></pre>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Liskov Substitution Principle (LSP).</strong> A subclass should be usable wherever its parent is expected without breaking behavior. If calling <code>fly()</code> on a <code>Bird</code> can throw <code>UnsupportedOperationException</code>, then <code>Bird</code> is not a reliable abstraction — you can't trust its contract. Code that depends on <code>Bird</code> must now check the concrete type before calling methods, which defeats the purpose of polymorphism.</p>
+
+<p>It also signals a misuse of <strong>inheritance</strong>: the relationship is "reuses some code from" rather than "is a special kind of."</p>
+
+<p><strong>Personal note — Interface Segregation Principle (ISP).</strong> I also consider Refused Bequest a violation of ISP, viewed from a slightly different angle. The parent type (<code>Bird</code>) is a fat interface that bundles capabilities not all subclasses can support. Clients like <code>BirdTracker</code> are forced to depend on the full <code>Bird</code> type — including <code>fly()</code>, <code>getAltitude()</code>, <code>layEggs()</code>, and everything else — even though they only care about flight. The subclass (Penguin) is forced to carry methods it can't fulfill (LSP pain on the implementer side), while the client is forced to depend on methods it doesn't need (ISP pain on the consumer side). The two violations share the same root cause — an overly broad parent type — and the fix is the same: break it into focused interfaces (<code>Flyable</code>, <code>Swimmable</code>), which solves both problems simultaneously.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Replace Inheritance with Delegation (Composition)</h3>
+
+<p>If the subclass only wants some of the parent's behavior, don't inherit — compose.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Bird</span> {
+    <span class="kw">private final</span> <span class="type">String</span> name;
+
+    <span class="kw">public</span> <span class="fn">Bird</span>(<span class="type">String</span> name) { <span class="kw">this</span>.name = name; }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getName</span>() { <span class="kw">return</span> name; }
+    <span class="kw">public void</span> <span class="fn">layEggs</span>() {
+        <span class="type">System</span>.out.println(name + <span class="str">" laid eggs"</span>);
+    }
+}
+
+<span class="kw">public interface</span> <span class="type">Flyable</span> {
+    <span class="kw">void</span> <span class="fn">fly</span>();
+    <span class="kw">double</span> <span class="fn">getAltitude</span>();
+}
+
+<span class="kw">public interface</span> <span class="type">Swimmable</span> {
+    <span class="kw">void</span> <span class="fn">swim</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Eagle</span> <span class="kw">extends</span> <span class="type">Bird</span> <span class="kw">implements</span> <span class="type">Flyable</span> {
+    <span class="kw">public</span> <span class="fn">Eagle</span>(<span class="type">String</span> name) { <span class="kw">super</span>(name); }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">fly</span>() {
+        <span class="type">System</span>.out.println(getName() + <span class="str">" is soaring"</span>);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">getAltitude</span>() { <span class="kw">return</span> <span class="num">300.0</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">Penguin</span> <span class="kw">extends</span> <span class="type">Bird</span> <span class="kw">implements</span> <span class="type">Swimmable</span> {
+    <span class="kw">public</span> <span class="fn">Penguin</span>(<span class="type">String</span> name) { <span class="kw">super</span>(name); }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">swim</span>() {
+        <span class="type">System</span>.out.println(getName() + <span class="str">" is swimming"</span>);
+    }
+}</code></pre>
+
+<p><code>Penguin</code> no longer inherits <code>fly()</code>. The tracker works with <code>Flyable</code>, not <code>Bird</code>:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">BirdTracker</span> {
+    <span class="kw">public void</span> <span class="fn">trackMigration</span>(<span class="type">List</span>&lt;<span class="type">Flyable</span>&gt; flock) {
+        <span class="kw">for</span> (<span class="type">Flyable</span> bird : flock) {
+            bird.fly();  <span class="cmt">// only Flyable birds — safe</span>
+            <span class="kw">double</span> alt = bird.getAltitude();
+            <span class="fn">logPosition</span>(alt);
+        }
+    }
+}</code></pre>
+
+<p>A <code>Penguin</code> can't be passed to <code>trackMigration</code> — the type system prevents the mistake at compile time.</p>
+
+<hr>
+
+<h3>Push Down Method / Push Down Field</h3>
+
+<p>When only some subclasses use a method or field defined in the parent, push it down to the subclasses that actually need it.</p>
+
+<p class="before-after">Before — parent defines behavior only some children use:</p>
+
+<pre><code><span class="kw">public abstract class</span> <span class="type">Vehicle</span> {
+    <span class="kw">public abstract void</span> <span class="fn">startEngine</span>();
+    <span class="kw">public abstract void</span> <span class="fn">steer</span>();
+    <span class="kw">public abstract void</span> <span class="fn">pedal</span>(); <span class="cmt">// only applies to bicycles</span>
+}
+
+<span class="kw">public class</span> <span class="type">Car</span> <span class="kw">extends</span> <span class="type">Vehicle</span> {
+    <span class="kw">public void</span> <span class="fn">startEngine</span>() { <span class="cmt">/* ... */</span> }
+    <span class="kw">public void</span> <span class="fn">steer</span>() { <span class="cmt">/* ... */</span> }
+    <span class="kw">public void</span> <span class="fn">pedal</span>() {
+        <span class="kw">throw new</span> <span class="type">UnsupportedOperationException</span>(); <span class="cmt">// refused bequest</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Bicycle</span> <span class="kw">extends</span> <span class="type">Vehicle</span> {
+    <span class="kw">public void</span> <span class="fn">startEngine</span>() {
+        <span class="kw">throw new</span> <span class="type">UnsupportedOperationException</span>(); <span class="cmt">// refused bequest</span>
+    }
+    <span class="kw">public void</span> <span class="fn">steer</span>() { <span class="cmt">/* ... */</span> }
+    <span class="kw">public void</span> <span class="fn">pedal</span>() { <span class="cmt">/* ... */</span> }
+}</code></pre>
+
+<p class="before-after">After — push specialized methods down, keep only shared behavior in the parent:</p>
+
+<pre><code><span class="kw">public abstract class</span> <span class="type">Vehicle</span> {
+    <span class="kw">public abstract void</span> <span class="fn">steer</span>();
+}
+
+<span class="kw">public class</span> <span class="type">Car</span> <span class="kw">extends</span> <span class="type">Vehicle</span> {
+    <span class="kw">public void</span> <span class="fn">startEngine</span>() { <span class="cmt">/* ... */</span> }
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">steer</span>() { <span class="cmt">/* ... */</span> }
+}
+
+<span class="kw">public class</span> <span class="type">Bicycle</span> <span class="kw">extends</span> <span class="type">Vehicle</span> {
+    <span class="kw">public void</span> <span class="fn">pedal</span>() { <span class="cmt">/* ... */</span> }
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">steer</span>() { <span class="cmt">/* ... */</span> }
+}</code></pre>
+
+<p>The parent only contains what all children genuinely share. No child refuses anything.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

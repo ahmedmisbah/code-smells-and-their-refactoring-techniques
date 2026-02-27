@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutable Data — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  h4 { color: #FFFFFF; font-size: 1.1rem; margin-top: 1.8rem; margin-bottom: 0.6rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; } .label { color: #FFFFFF; font-weight: bold; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Mutable Data</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Data that can be changed after it's created — and is changed, often from multiple places, often unexpectedly. Mutable Data is the close companion of Global Data, but it's broader: even data that isn't globally accessible can cause problems if it's mutable and passed around. You hand an object to a method, that method modifies it, and now the caller's state has changed out from under it. Or two threads share a mutable list, and one adds an element while the other is iterating.</p>
+
+<p>The core issue isn't that mutation exists — some mutation is unavoidable and natural. The problem is <em>uncontrolled, widespread mutation</em>: when data can be changed from many places, it becomes impossible to reason about what state the data is in at any given point in the program. Every method that receives a mutable object becomes a potential source of surprise.</p>
+
+<p>Fowler added this as a distinct smell in the second edition, influenced by the functional programming insight that immutable data eliminates entire categories of bugs.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">ShoppingCart</span> {
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; items;
+    <span class="kw">private double</span> discount;
+
+    <span class="kw">public</span> <span class="fn">ShoppingCart</span>() {
+        <span class="kw">this</span>.items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+        <span class="kw">this</span>.discount = <span class="num">0</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; <span class="fn">getItems</span>() {
+        <span class="kw">return</span> items; <span class="cmt">// returns the actual internal list — anyone can mutate it</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">setDiscount</span>(<span class="kw">double</span> discount) {
+        <span class="kw">this</span>.discount = discount;
+    }
+
+    <span class="kw">public double</span> <span class="fn">getTotal</span>() {
+        <span class="kw">double</span> sum = <span class="num">0</span>;
+        <span class="kw">for</span> (<span class="type">CartItem</span> item : items) {
+            sum += item.getPrice() * item.getQuantity();
+        }
+        <span class="kw">return</span> sum - discount;
+    }
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">CheckoutService</span> {
+    <span class="kw">public void</span> <span class="fn">checkout</span>(<span class="type">ShoppingCart</span> cart) {
+        <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; items = cart.getItems();
+        items.removeIf(item -&gt; !item.isInStock()); <span class="cmt">// silently modifies the cart</span>
+        <span class="kw">double</span> total = cart.getTotal();
+        <span class="cmt">// ...</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PromotionService</span> {
+    <span class="kw">public void</span> <span class="fn">applyPromotion</span>(<span class="type">ShoppingCart</span> cart) {
+        cart.setDiscount(<span class="num">20.0</span>);
+        cart.getItems().add(<span class="kw">new</span> <span class="type">CartItem</span>(<span class="str">"Free Gift"</span>, <span class="num">0</span>, <span class="num">1</span>)); <span class="cmt">// injects an item</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">AuditService</span> {
+    <span class="kw">public void</span> <span class="fn">logCart</span>(<span class="type">ShoppingCart</span> cart) {
+        <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; items = cart.getItems();
+        <span class="cmt">// just reading... but another thread calls checkout() concurrently</span>
+        <span class="kw">for</span> (<span class="type">CartItem</span> item : items) { <span class="cmt">// ConcurrentModificationException possible</span>
+            <span class="fn">log</span>(item);
+        }
+    }
+}</code></pre>
+
+<p><code>CheckoutService</code> removes items through the returned list reference. <code>PromotionService</code> injects items the same way. <code>AuditService</code> thinks it's just reading, but it's sharing the same mutable list that other services are modifying. The discount can be set from anywhere at any time. The cart's state is unpredictable.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Encapsulation</strong> and <strong>least surprise.</strong> When a getter returns a mutable internal collection, the class has lost control of its own state. Callers can bypass any validation, invariant checking, or event notification the class might want to enforce. The object's state changes without the object's knowledge.</p>
+
+<p>It also violates <strong>defensive programming</strong>: the system provides no protection against accidental or malicious modification, making it fragile and hard to debug.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Return defensive copies or unmodifiable views</h3>
+
+<p>The simplest first step: stop exposing mutable internals.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">ShoppingCart</span> {
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; items = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+    <span class="kw">private double</span> discount;
+
+    <span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">CartItem</span>&gt; <span class="fn">getItems</span>() {
+        <span class="kw">return</span> <span class="type">Collections</span>.unmodifiableList(items); <span class="cmt">// read-only view</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">addItem</span>(<span class="type">CartItem</span> item) {
+        <span class="kw">if</span> (item.getQuantity() &lt;= <span class="num">0</span>) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Quantity must be positive"</span>);
+        }
+        items.add(item);
+    }
+
+    <span class="kw">public void</span> <span class="fn">removeOutOfStock</span>() {
+        items.removeIf(item -&gt; !item.isInStock());
+    }
+
+    <span class="kw">public void</span> <span class="fn">applyDiscount</span>(<span class="kw">double</span> discount) {
+        <span class="kw">if</span> (discount &lt; <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Negative discount"</span>);
+        <span class="kw">this</span>.discount = discount;
+    }
+
+    <span class="kw">public double</span> <span class="fn">getTotal</span>() {
+        <span class="kw">double</span> sum = items.stream()
+            .mapToDouble(i -&gt; i.getPrice() * i.getQuantity())
+            .sum();
+        <span class="kw">return</span> sum - discount;
+    }
+}</code></pre>
+
+<p>Now callers can't add or remove items through the getter — they must use <code>addItem</code> and <code>removeOutOfStock</code>, which the cart controls.</p>
+
+<hr>
+
+<h3>Use immutable value objects</h3>
+
+<p>For data that represents a value (money, a date range, a coordinate), make it immutable from birth. Changes produce new instances instead of modifying existing ones.</p>
+
+<p class="before-after">Before — a mutable price that gets changed in place:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Price</span> {
+    <span class="kw">private double</span> amount;
+    <span class="kw">private</span> <span class="type">String</span> currency;
+
+    <span class="kw">public void</span> <span class="fn">setAmount</span>(<span class="kw">double</span> amount) { <span class="kw">this</span>.amount = amount; }
+    <span class="kw">public void</span> <span class="fn">setCurrency</span>(<span class="type">String</span> currency) { <span class="kw">this</span>.currency = currency; }
+}</code></pre>
+
+<p class="before-after">After — an immutable value; "changes" return new objects:</p>
+
+<pre><code><span class="kw">public final class</span> <span class="type">Price</span> {
+    <span class="kw">private final double</span> amount;
+    <span class="kw">private final</span> <span class="type">String</span> currency;
+
+    <span class="kw">public</span> <span class="fn">Price</span>(<span class="kw">double</span> amount, <span class="type">String</span> currency) {
+        <span class="kw">this</span>.amount = amount;
+        <span class="kw">this</span>.currency = currency;
+    }
+
+    <span class="kw">public</span> <span class="type">Price</span> <span class="fn">withAmount</span>(<span class="kw">double</span> newAmount) {
+        <span class="kw">return new</span> <span class="type">Price</span>(newAmount, <span class="kw">this</span>.currency);
+    }
+
+    <span class="kw">public</span> <span class="type">Price</span> <span class="fn">add</span>(<span class="type">Price</span> other) {
+        <span class="kw">if</span> (!<span class="kw">this</span>.currency.equals(other.currency)) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Currency mismatch"</span>);
+        }
+        <span class="kw">return new</span> <span class="type">Price</span>(<span class="kw">this</span>.amount + other.amount, <span class="kw">this</span>.currency);
+    }
+
+    <span class="kw">public double</span> <span class="fn">getAmount</span>() { <span class="kw">return</span> amount; }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getCurrency</span>() { <span class="kw">return</span> currency; }
+}</code></pre>
+
+<p>No one can silently change a <code>Price</code> after it's created. If you need a different price, you get a new object — the old one remains intact for anyone still referencing it.</p>
+
+<hr>
+
+<h3>Separate queries from commands</h3>
+
+<p>A method should either <em>return a value</em> (query) or <em>change state</em> (command), not both. This makes mutation visible and predictable.</p>
+
+<p class="before-after">Before — a method that both mutates and returns:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Stack</span>&lt;<span class="type">T</span>&gt; {
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">T</span>&gt; elements = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="type">T</span> <span class="fn">pop</span>() {
+        <span class="type">T</span> top = elements.remove(elements.size() - <span class="num">1</span>); <span class="cmt">// mutates AND returns</span>
+        <span class="kw">return</span> top;
+    }
+}</code></pre>
+
+<p class="before-after">After — separate the query from the command:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Stack</span>&lt;<span class="type">T</span>&gt; {
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">T</span>&gt; elements = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public</span> <span class="type">T</span> <span class="fn">peek</span>() {        <span class="cmt">// query: returns value, no mutation</span>
+        <span class="kw">return</span> elements.get(elements.size() - <span class="num">1</span>);
+    }
+
+    <span class="kw">public void</span> <span class="fn">pop</span>() {      <span class="cmt">// command: mutates, returns nothing</span>
+        elements.remove(elements.size() - <span class="num">1</span>);
+    }
+}</code></pre>
+
+<p>The caller now explicitly chooses to observe (<code>peek</code>) or to mutate (<code>pop</code>). The mutation is always deliberate, never a side effect of reading.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

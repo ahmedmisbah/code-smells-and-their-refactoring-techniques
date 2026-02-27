@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Primitive Obsession — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0f2e;
+    color: #d4daf0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.6rem;
+  }
+
+  h2 {
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.4rem;
+  }
+
+  h3 {
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  h4 {
+    color: #FFFFFF;
+    font-size: 1.1rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    margin-bottom: 1rem;
+  }
+
+  .aka {
+    color: #9ba3c2;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  strong {
+    color: #FFFFFF;
+  }
+
+  em {
+    color: #d4a0ff;
+    font-style: italic;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #1e2a5e;
+    margin: 2rem 0;
+  }
+
+  pre {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin-bottom: 1.2rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+  }
+
+  pre code {
+    color: #d4daf0;
+  }
+
+  p code, li code {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    color: #c77dff;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c77dff; }       /* keywords */
+  .type { color: #6b9fff; }     /* types */
+  .str { color: #a8c8ff; }      /* strings */
+  .num { color: #6b9fff; }      /* numbers */
+  .cmt { color: #9ba3c2; font-style: italic; }  /* comments */
+  .fn { color: #d4a0ff; }       /* function/method names */
+  .ann { color: #e0b0ff; }      /* annotations */
+  .label { color: #FFFFFF; font-weight: bold; }  /* before/after labels */
+
+  .before-after {
+    color: #c77dff;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  .note {
+    background: #111842;
+    border-left: 4px solid #6b9fff;
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0;
+    border-radius: 0 6px 6px 0;
+    color: #9ba3c2;
+  }
+
+  .note strong { color: #6b9fff; }
+
+  .logo-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #1e2a5e;
+  }
+
+  .logo-header img {
+    max-width: 180px;
+    height: auto;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #6b9fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #1e2a5e;
+    text-align: center;
+    color: #7880a0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  footer img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Primitive Obsession</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Using primitive types (strings, integers, doubles, booleans) to represent domain concepts that deserve their own classes. Instead of creating a <code>Money</code> type, you pass around <code>double</code>. Instead of a <code>PhoneNumber</code> class, you use <code>String</code>. Instead of a <code>Temperature</code> object, you use <code>int</code> with a comment saying "in Celsius." The primitives carry no meaning, no validation, and no behavior — they're just raw values drifting through your codebase, relying on every caller to remember what they represent and how to handle them correctly.</p>
+
+<p>This smell often starts innocently. A string for an email address seems fine — until you need to validate it in twelve places. A pair of doubles for latitude and longitude seems fine — until half your methods take six parameters that are all <code>double</code> and you swap two of them by accident.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">Patient</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> bloodType;          <span class="cmt">// "A+", "O-", "AB+", etc.</span>
+    <span class="kw">private int</span>    heightCm;
+    <span class="kw">private double</span> weightKg;
+    <span class="kw">private</span> <span class="type">String</span> phoneNumber;
+    <span class="kw">private double</span> temperature;        <span class="cmt">// Celsius? Fahrenheit? Who knows.</span>
+    <span class="kw">private</span> <span class="type">String</span> currency;           <span class="cmt">// "USD", "EUR"</span>
+    <span class="kw">private double</span> balance;
+
+    <span class="kw">public boolean</span> <span class="fn">isCompatibleDonor</span>(<span class="type">String</span> recipientBloodType) {
+        <span class="kw">if</span> (bloodType.equals(<span class="str">"O-"</span>)) <span class="kw">return true</span>;
+        <span class="kw">if</span> (bloodType.equals(<span class="str">"O+"</span>) &amp;&amp; !recipientBloodType.contains(<span class="str">"-"</span>)) <span class="kw">return true</span>;
+        <span class="kw">if</span> (bloodType.equals(recipientBloodType)) <span class="kw">return true</span>;
+        <span class="cmt">// ... fragile string matching continues</span>
+        <span class="kw">return false</span>;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">formatPhone</span>() {
+        <span class="cmt">// assumes US format — breaks for international numbers</span>
+        <span class="kw">return</span> <span class="str">"("</span> + phoneNumber.substring(<span class="num">0</span>, <span class="num">3</span>) + <span class="str">") "</span>
+             + phoneNumber.substring(<span class="num">3</span>, <span class="num">6</span>) + <span class="str">"-"</span>
+             + phoneNumber.substring(<span class="num">6</span>);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">hasHighFever</span>() {
+        <span class="cmt">// is this Celsius or Fahrenheit? Caller has to just know.</span>
+        <span class="kw">return</span> temperature &gt; <span class="num">38.5</span>;
+    }
+
+    <span class="kw">public double</span> <span class="fn">convertBalanceTo</span>(<span class="type">String</span> targetCurrency, <span class="kw">double</span> exchangeRate) {
+        <span class="cmt">// nothing stops you from passing the wrong rate for the wrong currency pair</span>
+        <span class="kw">return</span> balance * exchangeRate;
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateBMI</span>() {
+        <span class="kw">double</span> heightM = heightCm / <span class="num">100.0</span>;
+        <span class="kw">return</span> weightKg / (heightM * heightM);
+    }
+}</code></pre>
+
+<p>Every field is a primitive. Blood type compatibility is scattered string logic. Temperature has no unit. Currency and balance are decoupled — nothing ties "USD" to the <code>balance</code> next to it. Phone formatting assumes a format that isn't enforced. BMI conversion from centimeters to meters is repeated anywhere height is used.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Encapsulation.</strong> Primitives expose raw data with no protection. A <code>String bloodType</code> accepts <code>"banana"</code> as happily as <code>"O+"</code>. Validation, formatting, and comparison logic that belongs <em>with</em> the concept gets scattered across every method that touches it. You end up with the same guard clauses, the same parsing, the same conversion in dozens of places — violating <strong>DRY</strong> as a direct consequence.</p>
+
+<p>It also erodes <strong>type safety</strong>. When a method takes <code>(double, double, double)</code>, the compiler can't tell you that you swapped latitude and longitude. When it takes <code>(Coordinate location, Temperature temp)</code>, it can.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The primary refactoring is <strong>Replace Primitive with Object</strong> (called <em>Replace Data Value with Object</em> in earlier editions): wrap the primitive in a small class that carries meaning, validation, and behavior.</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">BloodType</span> {
+    <span class="kw">private final</span> <span class="type">String</span> code;
+
+    <span class="kw">private static final</span> <span class="type">Set</span>&lt;<span class="type">String</span>&gt; VALID = <span class="type">Set</span>.of(
+        <span class="str">"A+"</span>, <span class="str">"A-"</span>, <span class="str">"B+"</span>, <span class="str">"B-"</span>, <span class="str">"AB+"</span>, <span class="str">"AB-"</span>, <span class="str">"O+"</span>, <span class="str">"O-"</span>
+    );
+
+    <span class="kw">public</span> <span class="fn">BloodType</span>(<span class="type">String</span> code) {
+        <span class="kw">if</span> (!VALID.contains(code)) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid blood type: "</span> + code);
+        }
+        <span class="kw">this</span>.code = code;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">isUniversalDonor</span>() {
+        <span class="kw">return</span> code.equals(<span class="str">"O-"</span>);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">canDonateTo</span>(<span class="type">BloodType</span> recipient) {
+        <span class="kw">if</span> (isUniversalDonor()) <span class="kw">return true</span>;
+        <span class="kw">if</span> (code.equals(recipient.code)) <span class="kw">return true</span>;
+        <span class="cmt">// ... real compatibility logic lives here, once</span>
+        <span class="kw">return false</span>;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">toString</span>() { <span class="kw">return</span> code; }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">equals</span>(<span class="type">Object</span> o) {
+        <span class="kw">return</span> o <span class="kw">instanceof</span> <span class="type">BloodType</span> bt &amp;&amp; code.equals(bt.code);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public int</span> <span class="fn">hashCode</span>() { <span class="kw">return</span> code.hashCode(); }
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">Temperature</span> {
+    <span class="kw">private final double</span> value;
+    <span class="kw">private final</span> <span class="type">Unit</span> unit;
+
+    <span class="kw">public enum</span> <span class="type">Unit</span> { CELSIUS, FAHRENHEIT }
+
+    <span class="kw">public</span> <span class="fn">Temperature</span>(<span class="kw">double</span> value, <span class="type">Unit</span> unit) {
+        <span class="kw">this</span>.value = value;
+        <span class="kw">this</span>.unit = unit;
+    }
+
+    <span class="kw">public</span> <span class="type">Temperature</span> <span class="fn">toCelsius</span>() {
+        <span class="kw">if</span> (unit == <span class="type">Unit</span>.CELSIUS) <span class="kw">return this</span>;
+        <span class="kw">return new</span> <span class="type">Temperature</span>((value - <span class="num">32</span>) * <span class="num">5.0</span> / <span class="num">9.0</span>, <span class="type">Unit</span>.CELSIUS);
+    }
+
+    <span class="kw">public</span> <span class="type">Temperature</span> <span class="fn">toFahrenheit</span>() {
+        <span class="kw">if</span> (unit == <span class="type">Unit</span>.FAHRENHEIT) <span class="kw">return this</span>;
+        <span class="kw">return new</span> <span class="type">Temperature</span>(value * <span class="num">9.0</span> / <span class="num">5.0</span> + <span class="num">32</span>, <span class="type">Unit</span>.FAHRENHEIT);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">exceeds</span>(<span class="type">Temperature</span> threshold) {
+        <span class="kw">return this</span>.toCelsius().value &gt; threshold.toCelsius().value;
+    }
+
+    <span class="kw">public double</span> <span class="fn">getValue</span>() { <span class="kw">return</span> value; }
+    <span class="kw">public</span> <span class="type">Unit</span> <span class="fn">getUnit</span>() { <span class="kw">return</span> unit; }
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">Money</span> {
+    <span class="kw">private final double</span> amount;
+    <span class="kw">private final</span> <span class="type">Currency</span> currency;
+
+    <span class="kw">public</span> <span class="fn">Money</span>(<span class="kw">double</span> amount, <span class="type">Currency</span> currency) {
+        <span class="kw">this</span>.amount = amount;
+        <span class="kw">this</span>.currency = currency;
+    }
+
+    <span class="kw">public</span> <span class="type">Money</span> <span class="fn">convertTo</span>(<span class="type">Currency</span> target, <span class="type">ExchangeRateProvider</span> rates) {
+        <span class="kw">double</span> rate = rates.getRate(<span class="kw">this</span>.currency, target);
+        <span class="kw">return new</span> <span class="type">Money</span>(amount * rate, target);
+    }
+
+    <span class="kw">public</span> <span class="type">Money</span> <span class="fn">add</span>(<span class="type">Money</span> other) {
+        <span class="kw">if</span> (!<span class="kw">this</span>.currency.equals(other.currency)) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(
+                <span class="str">"Cannot add "</span> + currency + <span class="str">" to "</span> + other.currency
+            );
+        }
+        <span class="kw">return new</span> <span class="type">Money</span>(<span class="kw">this</span>.amount + other.amount, <span class="kw">this</span>.currency);
+    }
+
+    <span class="cmt">// ... subtract, compareTo, etc.</span>
+}</code></pre>
+
+<pre><code><span class="kw">public class</span> <span class="type">PhoneNumber</span> {
+    <span class="kw">private final</span> <span class="type">String</span> digits;
+    <span class="kw">private final</span> <span class="type">String</span> countryCode;
+
+    <span class="kw">public</span> <span class="fn">PhoneNumber</span>(<span class="type">String</span> countryCode, <span class="type">String</span> digits) {
+        <span class="kw">if</span> (!digits.matches(<span class="str">"\\d{7,15}"</span>)) {
+            <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid phone digits: "</span> + digits);
+        }
+        <span class="kw">this</span>.countryCode = countryCode;
+        <span class="kw">this</span>.digits = digits;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">format</span>() {
+        <span class="kw">if</span> (countryCode.equals(<span class="str">"1"</span>) &amp;&amp; digits.length() == <span class="num">10</span>) {
+            <span class="kw">return</span> <span class="str">"("</span> + digits.substring(<span class="num">0</span>, <span class="num">3</span>) + <span class="str">") "</span>
+                 + digits.substring(<span class="num">3</span>, <span class="num">6</span>) + <span class="str">"-"</span>
+                 + digits.substring(<span class="num">6</span>);
+        }
+        <span class="kw">return</span> <span class="str">"+"</span> + countryCode + <span class="str">" "</span> + digits;
+    }
+}</code></pre>
+
+<p>Now the <code>Patient</code> class becomes clean:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Patient</span> {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">BloodType</span> bloodType;
+    <span class="kw">private</span> <span class="type">Height</span> height;
+    <span class="kw">private</span> <span class="type">Weight</span> weight;
+    <span class="kw">private</span> <span class="type">PhoneNumber</span> phone;
+    <span class="kw">private</span> <span class="type">Temperature</span> temperature;
+    <span class="kw">private</span> <span class="type">Money</span> balance;
+
+    <span class="kw">public boolean</span> <span class="fn">isCompatibleDonor</span>(<span class="type">Patient</span> recipient) {
+        <span class="kw">return</span> bloodType.canDonateTo(recipient.bloodType);
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">hasHighFever</span>() {
+        <span class="kw">return</span> temperature.exceeds(<span class="kw">new</span> <span class="type">Temperature</span>(<span class="num">38.5</span>, <span class="type">Temperature</span>.<span class="type">Unit</span>.CELSIUS));
+    }
+
+    <span class="kw">public double</span> <span class="fn">calculateBMI</span>() {
+        <span class="kw">return</span> weight.toKg() / <span class="type">Math</span>.pow(height.toMeters(), <span class="num">2</span>);
+    }
+}</code></pre>
+
+<p>Each concept validates itself, converts itself, and compares itself. The caller can't misuse it — you can't accidentally pass a <code>Temperature</code> where a <code>Money</code> is expected.</p>
+
+<h3>Supporting refactorings</h3>
+
+<hr>
+
+<h4>Replace Type Code with Subclasses</h4>
+
+<p>When a primitive (usually an <code>int</code> or <code>String</code>) is used to distinguish behavior — acting as a type tag — replace it with a class hierarchy.</p>
+
+<p class="before-after">Before — a string type code drives conditional logic:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Employee</span> {
+    <span class="kw">private</span> <span class="type">String</span> type; <span class="cmt">// "engineer", "manager", "intern"</span>
+
+    <span class="kw">public double</span> <span class="fn">getBonus</span>(<span class="kw">double</span> salary) {
+        <span class="kw">if</span> (type.equals(<span class="str">"engineer"</span>)) {
+            <span class="kw">return</span> salary * <span class="num">0.10</span>;
+        } <span class="kw">else if</span> (type.equals(<span class="str">"manager"</span>)) {
+            <span class="kw">return</span> salary * <span class="num">0.20</span>;
+        } <span class="kw">else if</span> (type.equals(<span class="str">"intern"</span>)) {
+            <span class="kw">return</span> <span class="num">0</span>;
+        }
+        <span class="kw">throw new</span> <span class="type">IllegalStateException</span>(<span class="str">"Unknown type: "</span> + type);
+    }
+}</code></pre>
+
+<p class="before-after">After — the type code becomes a hierarchy, and each subclass owns its behavior:</p>
+
+<pre><code><span class="kw">public abstract class</span> <span class="type">Employee</span> {
+    <span class="kw">public abstract double</span> <span class="fn">getBonus</span>(<span class="kw">double</span> salary);
+}
+
+<span class="kw">public class</span> <span class="type">Engineer</span> <span class="kw">extends</span> <span class="type">Employee</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">getBonus</span>(<span class="kw">double</span> salary) {
+        <span class="kw">return</span> salary * <span class="num">0.10</span>;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Manager</span> <span class="kw">extends</span> <span class="type">Employee</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">getBonus</span>(<span class="kw">double</span> salary) {
+        <span class="kw">return</span> salary * <span class="num">0.20</span>;
+    }
+}
+
+<span class="kw">public class</span> <span class="type">Intern</span> <span class="kw">extends</span> <span class="type">Employee</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public double</span> <span class="fn">getBonus</span>(<span class="kw">double</span> salary) {
+        <span class="kw">return</span> <span class="num">0</span>;
+    }
+}</code></pre>
+
+<hr>
+
+<h4>Replace Type Code with State/Strategy</h4>
+
+<p>When the type can change at runtime (an employee gets promoted), subclassing the host object doesn't work — you can't change an object's class. Instead, extract the varying behavior into a separate strategy or state object.</p>
+
+<p class="before-after">Before — a mutable type code with conditional logic:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Subscription</span> {
+    <span class="kw">private</span> <span class="type">String</span> tier; <span class="cmt">// "free", "basic", "premium"</span>
+
+    <span class="kw">public void</span> <span class="fn">upgrade</span>() {
+        <span class="kw">if</span> (tier.equals(<span class="str">"free"</span>)) tier = <span class="str">"basic"</span>;
+        <span class="kw">else if</span> (tier.equals(<span class="str">"basic"</span>)) tier = <span class="str">"premium"</span>;
+    }
+
+    <span class="kw">public int</span> <span class="fn">getMaxDevices</span>() {
+        <span class="kw">if</span> (tier.equals(<span class="str">"free"</span>)) <span class="kw">return</span> <span class="num">1</span>;
+        <span class="kw">if</span> (tier.equals(<span class="str">"basic"</span>)) <span class="kw">return</span> <span class="num">3</span>;
+        <span class="kw">return</span> <span class="num">10</span>;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">canDownloadOffline</span>() {
+        <span class="kw">return</span> tier.equals(<span class="str">"premium"</span>);
+    }
+}</code></pre>
+
+<p class="before-after">After — behavior lives in swappable strategy objects:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">SubscriptionTier</span> {
+    <span class="type">SubscriptionTier</span> <span class="fn">upgrade</span>();
+    <span class="kw">int</span> <span class="fn">getMaxDevices</span>();
+    <span class="kw">boolean</span> <span class="fn">canDownloadOffline</span>();
+}
+
+<span class="kw">public class</span> <span class="type">FreeTier</span> <span class="kw">implements</span> <span class="type">SubscriptionTier</span> {
+    <span class="kw">public</span> <span class="type">SubscriptionTier</span> <span class="fn">upgrade</span>() { <span class="kw">return new</span> <span class="type">BasicTier</span>(); }
+    <span class="kw">public int</span> <span class="fn">getMaxDevices</span>() { <span class="kw">return</span> <span class="num">1</span>; }
+    <span class="kw">public boolean</span> <span class="fn">canDownloadOffline</span>() { <span class="kw">return false</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">BasicTier</span> <span class="kw">implements</span> <span class="type">SubscriptionTier</span> {
+    <span class="kw">public</span> <span class="type">SubscriptionTier</span> <span class="fn">upgrade</span>() { <span class="kw">return new</span> <span class="type">PremiumTier</span>(); }
+    <span class="kw">public int</span> <span class="fn">getMaxDevices</span>() { <span class="kw">return</span> <span class="num">3</span>; }
+    <span class="kw">public boolean</span> <span class="fn">canDownloadOffline</span>() { <span class="kw">return false</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">PremiumTier</span> <span class="kw">implements</span> <span class="type">SubscriptionTier</span> {
+    <span class="kw">public</span> <span class="type">SubscriptionTier</span> <span class="fn">upgrade</span>() { <span class="kw">return this</span>; }
+    <span class="kw">public int</span> <span class="fn">getMaxDevices</span>() { <span class="kw">return</span> <span class="num">10</span>; }
+    <span class="kw">public boolean</span> <span class="fn">canDownloadOffline</span>() { <span class="kw">return true</span>; }
+}
+
+<span class="kw">public class</span> <span class="type">Subscription</span> {
+    <span class="kw">private</span> <span class="type">SubscriptionTier</span> tier;
+
+    <span class="kw">public</span> <span class="fn">Subscription</span>() {
+        <span class="kw">this</span>.tier = <span class="kw">new</span> <span class="type">FreeTier</span>();
+    }
+
+    <span class="kw">public void</span> <span class="fn">upgrade</span>() {
+        <span class="kw">this</span>.tier = tier.upgrade();
+    }
+
+    <span class="kw">public int</span> <span class="fn">getMaxDevices</span>() {
+        <span class="kw">return</span> tier.getMaxDevices();
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">canDownloadOffline</span>() {
+        <span class="kw">return</span> tier.canDownloadOffline();
+    }
+}</code></pre>
+
+<p>The <code>Subscription</code> can change tier at runtime without conditionals, and adding a new tier means adding a class — not editing every <code>if/else</code> chain.</p>
+
+<hr>
+
+<h4>Introduce Parameter Object</h4>
+
+<p>When multiple related primitives travel together through method signatures, bundle them into a single object. (We covered this in detail under Long Method; the same technique applies here — the motivation is just different. In Long Method the goal is to shrink parameter lists; here the goal is to give the concept a name and a home for behavior.)</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

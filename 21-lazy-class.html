@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lazy Class — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Lazy Class</h1>
+<p class="aka">Also known as: Freeloader</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A class that doesn't do enough to justify its existence. It might have been created with good intentions — anticipating future complexity — but that complexity never arrived. Or it might be the residue of a refactoring that moved most of the class's logic elsewhere, leaving behind a thin shell with one trivial method.</p>
+
+<p>Every class has a cost: it adds a name to the vocabulary, a file to navigate, a concept to understand. If the class doesn't carry enough weight to earn that cost, it's overhead. The code would be simpler if the class were inlined into its caller or merged with a neighbor.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> StringUtils {
+    <span class="kw">public</span> <span class="kw">static</span> <span class="type">String</span> capitalize(<span class="type">String</span> input) {
+        <span class="kw">if</span> (input == <span class="kw">null</span> || input.isEmpty()) <span class="kw">return</span> input;
+        <span class="kw">return</span> input.substring(0, 1).toUpperCase() + input.substring(1);
+    }
+}</code></pre>
+
+<p>A class with a single trivial method that wraps a one-liner. The caller could do this inline, or the method could live in whatever class actually uses it.</p>
+
+<p>Another common form:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> OrderWrapper {
+    <span class="kw">private</span> <span class="kw">final</span> Order order;
+
+    <span class="kw">public</span> OrderWrapper(Order order) {
+        <span class="kw">this</span>.order = order;
+    }
+
+    <span class="kw">public</span> Order getOrder() {
+        <span class="kw">return</span> order;
+    }
+}</code></pre>
+
+<p>A class that holds an object and returns it. It delegates everything, adds nothing, and exists only because someone thought a wrapper might be needed someday.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Simplicity / YAGNI (You Aren't Gonna Need It).</strong> Every class should earn its keep. A class that doesn't carry meaningful behavior or encapsulate meaningful state is conceptual clutter — it adds to the vocabulary without adding to the value. The codebase would be simpler without it.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Inline Class</h3>
+
+<p>Merge the lazy class into whatever class uses it.</p>
+
+<p class="before-after"><strong>Before:</strong></p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> PhoneNumber {
+    <span class="kw">private</span> <span class="kw">final</span> <span class="type">String</span> number;
+
+    <span class="kw">public</span> PhoneNumber(<span class="type">String</span> number) {
+        <span class="kw">this</span>.number = number;
+    }
+
+    <span class="kw">public</span> <span class="type">String</span> getNumber() {
+        <span class="kw">return</span> number;
+    }
+}
+
+<span class="kw">public</span> <span class="kw">class</span> Customer {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> PhoneNumber phone;
+
+    <span class="kw">public</span> <span class="type">String</span> getPhone() {
+        <span class="kw">return</span> phone.getNumber();
+    }
+}</code></pre>
+
+<p>If <code>PhoneNumber</code> does nothing but hold a string — no validation, no formatting, no behavior — inline it:</p>
+
+<p class="before-after"><strong>After:</strong></p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Customer {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="type">String</span> phone;
+
+    <span class="kw">public</span> <span class="type">String</span> getPhone() {
+        <span class="kw">return</span> phone;
+    }
+}</code></pre>
+
+<p>If the class <em>later</em> grows behavior (formatting, validation), it can be extracted again at that point.</p>
+
+<h3>Collapse Hierarchy</h3>
+
+<p>When a subclass does nothing beyond what the parent does, merge it into the parent.</p>
+
+<p class="before-after"><strong>Before:</strong></p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="kw">double</span> salary;
+    <span class="cmt">// ... full behavior</span>
+}
+
+<span class="kw">public</span> <span class="kw">class</span> RegularEmployee <span class="kw">extends</span> Employee {
+    <span class="cmt">// completely empty — adds nothing</span>
+}</code></pre>
+
+<p class="before-after"><strong>After:</strong></p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Employee {
+    <span class="kw">private</span> <span class="type">String</span> name;
+    <span class="kw">private</span> <span class="kw">double</span> salary;
+    <span class="cmt">// ... full behavior</span>
+}
+<span class="cmt">// RegularEmployee is gone — just use Employee directly</span></code></pre>
+
+<h3>When to keep a Lazy Class</h3>
+
+<p>A seemingly lazy class is justified when it carries <em>semantic meaning</em> even without much code. A <code>Money</code> class that wraps a <code>double</code> and a <code>String</code> might look lazy, but it prevents mixing currencies and catches type errors at compile time. The behavior is small, but the <em>meaning</em> is large. Judge by value, not by line count.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

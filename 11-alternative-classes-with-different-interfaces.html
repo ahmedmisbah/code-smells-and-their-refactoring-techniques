@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alternative Classes with Different Interfaces — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; }
+  .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; }
+  em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; }
+  .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; }
+  .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; }
+  .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; }
+  footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Alternative Classes with Different Interfaces</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Two or more classes that do essentially the same thing but expose different method names, parameter orders, or return types. They're interchangeable in purpose but not in practice — you can't swap one for the other without rewriting the calling code. The duplication isn't in the implementation (they might be completely different internally); it's in the <em>concept</em>. They serve the same role but refuse to agree on how to be called.</p>
+
+<p>This smell often appears when two developers solve the same problem independently, or when a class is written to replace an old one but nobody aligns the interfaces. It also appears across libraries: you use one PDF generator with <code>render(doc)</code> and another with <code>generate(document, options)</code> — same intent, different shape.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public class</span> <span class="type">EmailNotifier</span> {
+    <span class="kw">public void</span> <span class="fn">sendAlert</span>(<span class="type">String</span> recipientEmail, <span class="type">String</span> subject, <span class="type">String</span> body) {
+        <span class="cmt">// sends an email</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">SmsNotifier</span> {
+    <span class="kw">public void</span> <span class="fn">notify</span>(<span class="type">String</span> phoneNumber, <span class="type">String</span> message) {
+        <span class="cmt">// sends an SMS</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PushNotifier</span> {
+    <span class="kw">public boolean</span> <span class="fn">pushMessage</span>(<span class="type">String</span> deviceToken, <span class="type">String</span> title, <span class="type">String</span> payload,
+                                <span class="kw">boolean</span> highPriority) {
+        <span class="cmt">// sends a push notification</span>
+        <span class="kw">return true</span>;
+    }
+}</code></pre>
+
+<p>All three classes serve the same purpose — deliver a notification to a user — but they have different method names (<code>sendAlert</code>, <code>notify</code>, <code>pushMessage</code>), different parameter shapes, and different return types. The calling code can't treat them uniformly:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AlertService</span> {
+    <span class="kw">public void</span> <span class="fn">alertUser</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="kw">if</span> (user.prefersEmail()) {
+            emailNotifier.sendAlert(user.getEmail(), <span class="str">"Alert"</span>, message);
+        } <span class="kw">else if</span> (user.prefersSms()) {
+            smsNotifier.notify(user.getPhone(), message);
+        } <span class="kw">else</span> {
+            pushNotifier.pushMessage(user.getDeviceToken(), <span class="str">"Alert"</span>, message, <span class="kw">true</span>);
+        }
+    }
+}</code></pre>
+
+<p>Every new channel requires a new branch. The code can't iterate over notifiers or swap one for another.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Liskov Substitution Principle (LSP)</strong> and <strong>polymorphism</strong> in general. Classes that serve the same role should be substitutable for each other. When they have different interfaces, substitution is impossible — the caller must know the concrete type and call the right method with the right arguments. This defeats the purpose of abstraction.</p>
+
+<p>It also violates <strong>DRY</strong> at the design level: the <em>concept</em> of "send a notification" is repeated three times with no unifying abstraction.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Rename Methods + Extract Interface</h3>
+
+<p>Align the interfaces, then extract a common type.</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">Notifier</span> {
+    <span class="kw">void</span> <span class="fn">send</span>(<span class="type">String</span> recipient, <span class="type">String</span> subject, <span class="type">String</span> body);
+}
+
+<span class="kw">public class</span> <span class="type">EmailNotifier</span> <span class="kw">implements</span> <span class="type">Notifier</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">send</span>(<span class="type">String</span> recipient, <span class="type">String</span> subject, <span class="type">String</span> body) {
+        <span class="cmt">// recipient is an email address</span>
+        <span class="cmt">// sends an email with subject and body</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">SmsNotifier</span> <span class="kw">implements</span> <span class="type">Notifier</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">send</span>(<span class="type">String</span> recipient, <span class="type">String</span> subject, <span class="type">String</span> body) {
+        <span class="cmt">// recipient is a phone number</span>
+        <span class="cmt">// concatenates subject and body into SMS (subject may be ignored)</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="type">PushNotifier</span> <span class="kw">implements</span> <span class="type">Notifier</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">send</span>(<span class="type">String</span> recipient, <span class="type">String</span> subject, <span class="type">String</span> body) {
+        <span class="cmt">// recipient is a device token</span>
+        <span class="cmt">// sends push with subject as title and body as payload</span>
+    }
+}</code></pre>
+
+<p>Now the calling code is uniform:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">AlertService</span> {
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">Notifier</span>&gt; notifiers;
+
+    <span class="kw">public</span> <span class="fn">AlertService</span>(<span class="type">List</span>&lt;<span class="type">Notifier</span>&gt; notifiers) {
+        <span class="kw">this</span>.notifiers = notifiers;
+    }
+
+    <span class="kw">public void</span> <span class="fn">alertUser</span>(<span class="type">User</span> user, <span class="type">String</span> message) {
+        <span class="kw">for</span> (<span class="type">Notifier</span> notifier : notifiers) {
+            notifier.send(user.getContactFor(notifier), <span class="str">"Alert"</span>, message);
+        }
+    }
+}</code></pre>
+
+<p>Adding a new channel means writing one class that implements <code>Notifier</code>. Zero changes to <code>AlertService</code>.</p>
+
+<hr>
+
+<h3>Move Methods to align behavior</h3>
+
+<p>Sometimes the classes don't just have different names — they have genuinely different capabilities scattered across them. Use <strong>Move Method</strong> to consolidate behavior so each class covers the same ground, then extract the interface.</p>
+
+<p class="before-after">Before — one class formats, the other doesn't:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">PdfExporter</span> {
+    <span class="kw">public byte</span>[] <span class="fn">export</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getFormattedTitle</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+}
+
+<span class="kw">public class</span> <span class="type">CsvExporter</span> {
+    <span class="kw">public byte</span>[] <span class="fn">generate</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+    <span class="cmt">// no title formatting — caller has to do it manually</span>
+}</code></pre>
+
+<p class="before-after">After — move <code>getFormattedTitle</code> logic into both, align names, extract interface:</p>
+
+<pre><code><span class="kw">public interface</span> <span class="type">ReportExporter</span> {
+    <span class="kw">byte</span>[] <span class="fn">export</span>(<span class="type">Report</span> report);
+    <span class="type">String</span> <span class="fn">getFormattedTitle</span>(<span class="type">Report</span> report);
+}
+
+<span class="kw">public class</span> <span class="type">PdfExporter</span> <span class="kw">implements</span> <span class="type">ReportExporter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public byte</span>[] <span class="fn">export</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getFormattedTitle</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+}
+
+<span class="kw">public class</span> <span class="type">CsvExporter</span> <span class="kw">implements</span> <span class="type">ReportExporter</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public byte</span>[] <span class="fn">export</span>(<span class="type">Report</span> report) { <span class="cmt">/* ... */</span> }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> <span class="type">String</span> <span class="fn">getFormattedTitle</span>(<span class="type">Report</span> report) {
+        <span class="cmt">// now CsvExporter also provides formatted titles</span>
+        <span class="kw">return</span> report.getTitle().toUpperCase();
+    }
+}</code></pre>
+
+<p>Both classes now have the same shape. They're interchangeable through the <code>ReportExporter</code> interface.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>

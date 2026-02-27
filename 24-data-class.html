@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Class — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Data Class</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A class that contains only fields, getters, and setters — and nothing else. No behavior, no logic, no decisions. It's a dumb container that holds data but doesn't know what to do with it. All the logic that <em>uses</em> the data lives in other classes, which reach in, pull out the fields, compute on them, and put the results back.</p>
+
+<p>The class is essentially a <code>struct</code> — and in some contexts that's fine (DTOs crossing an API boundary, for example). The smell arises when the data class is used within your own domain and all the behavior that belongs <em>with</em> the data has drifted into other classes. The data and the behavior that operates on it have been separated when they should be together.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Rectangle {
+    <span class="kw">private</span> <span class="kw">double</span> width;
+    <span class="kw">private</span> <span class="kw">double</span> height;
+
+    <span class="kw">public</span> <span class="kw">double</span> getWidth() { <span class="kw">return</span> width; }
+    <span class="kw">public</span> <span class="kw">void</span> setWidth(<span class="kw">double</span> width) { <span class="kw">this</span>.width = width; }
+    <span class="kw">public</span> <span class="kw">double</span> getHeight() { <span class="kw">return</span> height; }
+    <span class="kw">public</span> <span class="kw">void</span> setHeight(<span class="kw">double</span> height) { <span class="kw">this</span>.height = height; }
+}</code></pre>
+
+<p>All behavior lives elsewhere:</p>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> GeometryUtils {
+    <span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> area(Rectangle r) {
+        <span class="kw">return</span> r.getWidth() * r.getHeight();
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> <span class="kw">double</span> perimeter(Rectangle r) {
+        <span class="kw">return</span> 2 * (r.getWidth() + r.getHeight());
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> <span class="kw">boolean</span> isSquare(Rectangle r) {
+        <span class="kw">return</span> r.getWidth() == r.getHeight();
+    }
+
+    <span class="kw">public</span> <span class="kw">static</span> Rectangle scale(Rectangle r, <span class="kw">double</span> factor) {
+        Rectangle scaled = <span class="kw">new</span> Rectangle();
+        scaled.setWidth(r.getWidth() * factor);
+        scaled.setHeight(r.getHeight() * factor);
+        <span class="kw">return</span> scaled;
+    }
+}</code></pre>
+
+<p><code>Rectangle</code> knows nothing about itself. <code>GeometryUtils</code> does all the thinking. The data and the behavior are separated — and every method in <code>GeometryUtils</code> takes a <code>Rectangle</code> as its first parameter, which is a strong signal that the methods belong on <code>Rectangle</code>.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Encapsulation.</strong> An object should bundle data <em>with</em> the behavior that operates on it. A data class exposes its internals and relies on external code to provide the behavior, which means the class can't protect its own invariants, can't evolve its representation without breaking callers, and can't be understood in isolation.</p>
+
+<p>It's also a symptom of <strong>Feature Envy</strong> (a Coupler smell): the methods in <code>GeometryUtils</code> are more interested in <code>Rectangle</code>'s data than in their own class.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Move Method — move behavior into the data class</h3>
+
+<pre><code><span class="kw">public</span> <span class="kw">class</span> Rectangle {
+    <span class="kw">private</span> <span class="kw">double</span> width;
+    <span class="kw">private</span> <span class="kw">double</span> height;
+
+    <span class="kw">public</span> Rectangle(<span class="kw">double</span> width, <span class="kw">double</span> height) {
+        <span class="kw">this</span>.width = width;
+        <span class="kw">this</span>.height = height;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> area() {
+        <span class="kw">return</span> width * height;
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> perimeter() {
+        <span class="kw">return</span> 2 * (width + height);
+    }
+
+    <span class="kw">public</span> <span class="kw">boolean</span> isSquare() {
+        <span class="kw">return</span> width == height;
+    }
+
+    <span class="kw">public</span> Rectangle scale(<span class="kw">double</span> factor) {
+        <span class="kw">return</span> <span class="kw">new</span> Rectangle(width * factor, height * factor);
+    }
+
+    <span class="kw">public</span> <span class="kw">double</span> getWidth() { <span class="kw">return</span> width; }
+    <span class="kw">public</span> <span class="kw">double</span> getHeight() { <span class="kw">return</span> height; }
+}</code></pre>
+
+<p><code>GeometryUtils</code> either disappears or shrinks dramatically. <code>Rectangle</code> now knows itself.</p>
+
+<h3>Remove setters — enforce invariants</h3>
+
+<p>Once behavior lives in the class, you can often remove setters and make the class immutable or at least controlled. <code>scale</code> returns a <em>new</em> rectangle instead of modifying the existing one. The constructor enforces valid state from the start.</p>
+
+<h3>When a Data Class is acceptable</h3>
+
+<div class="note"><strong>DTOs (Data Transfer Objects)</strong> that cross boundaries (API responses, database rows) are legitimately data-only. Their purpose is transport, not behavior.</div>
+
+<div class="note"><strong>Records / Value Objects</strong> in languages that support them (Java <code>record</code>, Kotlin <code>data class</code>) are designed to be data carriers. They're fine when they're used as values, not as domain objects with missing behavior.</div>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

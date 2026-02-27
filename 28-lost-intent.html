@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lost Intent — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0f2e; color: #d4daf0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.7; padding: 2rem; max-width: 900px; margin: 0 auto; }
+  h1 { color: #FFFFFF; font-size: 2.2rem; margin-bottom: 0.3rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.6rem; }
+  h2 { color: #FFFFFF; font-size: 1.5rem; margin-top: 2.5rem; margin-bottom: 1rem; border-bottom: 1px solid #1e2a5e; padding-bottom: 0.4rem; }
+  h3 { color: #FFFFFF; font-size: 1.25rem; margin-top: 2rem; margin-bottom: 0.8rem; }
+  p { margin-bottom: 1rem; } .aka { color: #9ba3c2; font-size: 1rem; margin-bottom: 1.5rem; }
+  strong { color: #FFFFFF; } em { color: #d4a0ff; font-style: italic; }
+  hr { border: none; border-top: 1px solid #1e2a5e; margin: 2rem 0; }
+  pre { background: #111842; border: 1px solid #1e2a5e; border-radius: 6px; padding: 1rem 1.2rem; overflow-x: auto; margin-bottom: 1.2rem; font-size: 0.875rem; line-height: 1.55; }
+  code { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size: 0.875rem; }
+  pre code { color: #d4daf0; }
+  p code, li code { background: #111842; border: 1px solid #1e2a5e; border-radius: 4px; padding: 0.15em 0.4em; color: #c77dff; }
+  .kw { color: #c77dff; } .type { color: #6b9fff; } .str { color: #a8c8ff; } .num { color: #6b9fff; } .cmt { color: #9ba3c2; font-style: italic; } .fn { color: #d4a0ff; } .ann { color: #e0b0ff; }
+  .before-after { color: #c77dff; font-weight: bold; font-size: 0.95rem; margin-bottom: 0.4rem; margin-top: 1.2rem; }
+  .note { background: #111842; border-left: 4px solid #6b9fff; padding: 0.8rem 1rem; margin: 1.2rem 0; border-radius: 0 6px 6px 0; color: #9ba3c2; } .note strong { color: #6b9fff; }
+  .logo-header { text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #1e2a5e; } .logo-header img { max-width: 180px; height: auto; }
+  .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6b9fff; text-decoration: none; font-size: 0.95rem; } .back-link:hover { text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; margin: 1.2rem 0; font-size: 0.9rem; }
+  th { background: #111842; color: #FFFFFF; text-align: left; padding: 0.6rem 1rem; border: 1px solid #1e2a5e; }
+  td { padding: 0.6rem 1rem; border: 1px solid #1e2a5e; }
+  footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #1e2a5e; text-align: center; color: #7880a0; font-size: 0.8rem; line-height: 1.6; } footer img { max-width: 100px; height: auto; margin-bottom: 0.8rem; opacity: 0.7; }
+</style>
+</head>
+<body>
+<div class="logo-header"><img src="logo.jpg" alt="Tek Caffe Logo"></div>
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Lost Intent</h1>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>Code that doesn't easily communicate its author's intention. The purpose is obscured by complexity, unintuitive names, poor organization, blended algorithm steps, or reliance on side effects. You read the code and can't answer the basic question: "what is this trying to do?"</p>
+
+<p>Lost Intent is a meta-smell — it's the <em>cumulative effect</em> of many other smells working together. Mysterious names hide what things are. Long methods blend steps together. Conditional complexity buries the decision logic. Side effects create invisible behavior. Comments try to compensate but rot over time. The result is code that is hazardous: hard to understand, hard to extend, and hard to modify.</p>
+
+<p>Industrial Logic contrasts <em>intention-revealing code</em> with <em>lost intent</em> code across four dimensions:</p>
+
+<table>
+  <tr><th>Intention-Revealing Code</th><th>Lost Intent</th></tr>
+  <tr><td>The purpose of the code is clear.</td><td>Low-level or complex logic obscures the code's purpose.</td></tr>
+  <tr><td>You can easily find the code you seek.</td><td>The location of code makes little sense.</td></tr>
+  <tr><td>Every step of an algorithm is clearly defined.</td><td>The steps of the algorithm are blended together.</td></tr>
+  <tr><td>Code depends on no side effects.</td><td>Code depends on side effects of operations/functions.</td></tr>
+</table>
+
+<hr>
+
+<h2>Example</h2>
+
+<p>A <code>Loan</code> class with five overloaded constructors — each creating a different kind of loan, but none revealing which kind:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Loan</span> {
+
+    <span class="kw">public</span> <span class="fn">Loan</span>(<span class="kw">double</span> commitment, <span class="kw">int</span> riskRating, <span class="kw">int</span> maturity) {
+        <span class="cmt">// creates... what kind of loan?</span>
+    }
+
+    <span class="kw">public</span> <span class="fn">Loan</span>(<span class="kw">double</span> commitment, <span class="kw">int</span> riskRating, <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="cmt">// is this a term loan? a revolver? an RCTL?</span>
+    }
+
+    <span class="kw">public</span> <span class="fn">Loan</span>(<span class="kw">double</span> commitment, <span class="kw">double</span> outstanding, <span class="kw">int</span> riskRating,
+                <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="cmt">// more parameters, still no clue</span>
+    }
+
+    <span class="kw">public</span> <span class="fn">Loan</span>(<span class="type">CapitalStrategy</span> capitalStrategy, <span class="kw">double</span> commitment,
+                <span class="kw">int</span> riskRating, <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="cmt">// the strategy might hint, but the constructor doesn't say</span>
+    }
+
+    <span class="kw">public</span> <span class="fn">Loan</span>(<span class="type">CapitalStrategy</span> capitalStrategy, <span class="kw">double</span> commitment,
+                <span class="kw">double</span> outstanding, <span class="kw">int</span> riskRating, <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="cmt">// the "full" constructor — but full of what?</span>
+    }
+}</code></pre>
+
+<p>A developer looking at this class has no idea which constructor to call to create a Term Loan versus a Revolver versus an RCTL. The <em>intent</em> — what kind of loan each constructor produces — is lost inside parameter combinations that only the original author understood. You have to read the implementation of each constructor, compare the parameter lists, and reverse-engineer the mapping.</p>
+
+<p>Here's another example — a method whose steps are blended together:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">process</span>(<span class="type">List</span>&lt;<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt;&gt; records, <span class="type">String</span> mode, <span class="kw">boolean</span> flag) {
+    <span class="kw">double</span> r = <span class="num">0</span>;
+    <span class="type">List</span>&lt;<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt;&gt; tmp = <span class="kw">new</span> <span class="type">ArrayList</span>&lt;&gt;();
+    <span class="kw">for</span> (<span class="type">Map</span>&lt;<span class="type">String</span>, <span class="type">Object</span>&gt; rec : records) {
+        <span class="kw">if</span> (flag &amp;&amp; rec.get(<span class="str">"status"</span>) != <span class="kw">null</span>
+                &amp;&amp; ((<span class="type">String</span>) rec.get(<span class="str">"status"</span>)).startsWith(<span class="str">"A"</span>)
+                &amp;&amp; !mode.equals(<span class="str">"X"</span>)) {
+            <span class="kw">double</span> v = ((<span class="type">Number</span>) rec.get(<span class="str">"val"</span>)).doubleValue();
+            <span class="kw">if</span> (mode.equals(<span class="str">"M"</span>)) {
+                v *= <span class="num">1.1</span>;
+            } <span class="kw">else if</span> (mode.equals(<span class="str">"D"</span>)) {
+                v *= <span class="num">0.9</span>;
+            }
+            r += v;
+            rec.put(<span class="str">"processed"</span>, <span class="kw">true</span>);  <span class="cmt">// side effect</span>
+            tmp.add(rec);
+        }
+    }
+    records.clear();       <span class="cmt">// side effect: clears the input</span>
+    records.addAll(tmp);   <span class="cmt">// side effect: replaces input contents</span>
+    <span class="kw">return</span> r;
+}</code></pre>
+
+<p>What does this method do? The name <code>process</code> says nothing. The parameters <code>mode</code> and <code>flag</code> are opaque. The filtering condition is a wall of casts and string comparisons. The method computes a total <em>and</em> mutates the input list <em>and</em> marks records as processed — three blended purposes. The intent is completely buried.</p>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Intention-Revealing Design.</strong> Code should communicate what it does through its names, structure, and organization — not force the reader to reverse-engineer meaning from implementation details. When intent is lost, every reader pays a tax: they must reconstruct the author's thinking from cryptic artifacts, which is slow, error-prone, and demoralizing.</p>
+
+<p>Lost Intent is also a compounding violation of many principles at once: <strong>SRP</strong> (blended steps), <strong>least surprise</strong> (side effects), <strong>readability</strong> (poor names), and <strong>separation of concerns</strong> (algorithm steps tangled together). It's the smell you get when multiple individual smells are left untreated until the code's purpose is no longer recoverable from a casual reading.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<h3>Replace Constructors with Creation Methods</h3>
+
+<p>For the <code>Loan</code> example, replace the ambiguous constructors with named static factory methods that reveal what kind of loan they create.</p>
+
+<p class="before-after">Before — which constructor creates a Term Loan?</p>
+
+<pre><code><span class="type">Loan</span> termLoan = <span class="kw">new</span> <span class="type">Loan</span>(commitment, riskRating, maturity);
+<span class="cmt">// or is it this one?</span>
+<span class="type">Loan</span> termLoan = <span class="kw">new</span> <span class="type">Loan</span>(capitalStrategy, commitment, riskRating, maturity, expiry);</code></pre>
+
+<p class="before-after">After — creation methods make the intent explicit:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Loan</span> {
+    <span class="kw">private final</span> <span class="type">CapitalStrategy</span> capitalStrategy;
+    <span class="kw">private final double</span> commitment;
+    <span class="kw">private final double</span> outstanding;
+    <span class="kw">private final int</span> riskRating;
+    <span class="kw">private final int</span> maturity;
+    <span class="kw">private final</span> <span class="type">Date</span> expiry;
+
+    <span class="kw">private</span> <span class="fn">Loan</span>(<span class="type">CapitalStrategy</span> capitalStrategy, <span class="kw">double</span> commitment,
+                  <span class="kw">double</span> outstanding, <span class="kw">int</span> riskRating,
+                  <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="kw">this</span>.capitalStrategy = capitalStrategy;
+        <span class="kw">this</span>.commitment = commitment;
+        <span class="kw">this</span>.outstanding = outstanding;
+        <span class="kw">this</span>.riskRating = riskRating;
+        <span class="kw">this</span>.maturity = maturity;
+        <span class="kw">this</span>.expiry = expiry;
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createTermLoan</span>(<span class="kw">double</span> commitment, <span class="kw">int</span> riskRating,
+                                       <span class="kw">int</span> maturity) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(<span class="kw">null</span>, commitment, <span class="num">0</span>, riskRating, maturity, <span class="kw">null</span>);
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createTermLoan</span>(<span class="type">CapitalStrategy</span> strategy,
+                                       <span class="kw">double</span> commitment, <span class="kw">int</span> riskRating,
+                                       <span class="kw">int</span> maturity) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(strategy, commitment, <span class="num">0</span>, riskRating, maturity, <span class="kw">null</span>);
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createRevolver</span>(<span class="kw">double</span> commitment, <span class="kw">double</span> outstanding,
+                                       <span class="kw">int</span> riskRating, <span class="type">Date</span> expiry) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(<span class="kw">null</span>, commitment, outstanding, riskRating, <span class="num">0</span>, expiry);
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createRevolver</span>(<span class="type">CapitalStrategy</span> strategy,
+                                       <span class="kw">double</span> commitment, <span class="kw">double</span> outstanding,
+                                       <span class="kw">int</span> riskRating, <span class="type">Date</span> expiry) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(strategy, commitment, outstanding, riskRating, <span class="num">0</span>, expiry);
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createRCTL</span>(<span class="kw">double</span> commitment, <span class="kw">double</span> outstanding,
+                                    <span class="kw">int</span> riskRating, <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(<span class="kw">null</span>, commitment, outstanding, riskRating, maturity, expiry);
+    }
+
+    <span class="kw">public static</span> <span class="type">Loan</span> <span class="fn">createRCTL</span>(<span class="type">CapitalStrategy</span> strategy, <span class="kw">double</span> commitment,
+                                    <span class="kw">double</span> outstanding, <span class="kw">int</span> riskRating,
+                                    <span class="kw">int</span> maturity, <span class="type">Date</span> expiry) {
+        <span class="kw">return new</span> <span class="type">Loan</span>(strategy, commitment, outstanding, riskRating,
+                        maturity, expiry);
+    }
+}</code></pre>
+
+<p>Now the calling code reveals its intent:</p>
+
+<pre><code><span class="type">Loan</span> term = <span class="type">Loan</span>.createTermLoan(<span class="num">500_000</span>, <span class="num">3</span>, <span class="num">36</span>);
+<span class="type">Loan</span> revolver = <span class="type">Loan</span>.createRevolver(<span class="num">250_000</span>, <span class="num">50_000</span>, <span class="num">2</span>, expiryDate);
+<span class="type">Loan</span> rctl = <span class="type">Loan</span>.createRCTL(strategy, <span class="num">1_000_000</span>, <span class="num">200_000</span>, <span class="num">4</span>, <span class="num">60</span>, expiryDate);</code></pre>
+
+<p>Each line says exactly what it's creating. The constructor is private — you <em>must</em> go through a named creation method.</p>
+
+<hr>
+
+<h3>Extract Method + Rename — reveal the algorithm's steps</h3>
+
+<p>For the blended-steps example, separate each concern and name it.</p>
+
+<p class="before-after">After:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">RecordProcessor</span> {
+
+    <span class="kw">public</span> <span class="type">ProcessingResult</span> <span class="fn">process</span>(<span class="type">List</span>&lt;<span class="type">Record</span>&gt; records) {
+        <span class="type">List</span>&lt;<span class="type">Record</span>&gt; eligible = <span class="fn">filterEligible</span>(records);
+        <span class="type">List</span>&lt;<span class="type">Record</span>&gt; adjusted = <span class="fn">applyAdjustments</span>(eligible);
+        <span class="kw">double</span> total = <span class="fn">computeTotal</span>(adjusted);
+        <span class="kw">return new</span> <span class="type">ProcessingResult</span>(adjusted, total);
+    }
+
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">Record</span>&gt; <span class="fn">filterEligible</span>(<span class="type">List</span>&lt;<span class="type">Record</span>&gt; records) {
+        <span class="kw">return</span> records.stream()
+            .filter(<span class="type">Record</span>::isActive)
+            .collect(<span class="type">Collectors</span>.toList());
+    }
+
+    <span class="kw">private</span> <span class="type">List</span>&lt;<span class="type">Record</span>&gt; <span class="fn">applyAdjustments</span>(<span class="type">List</span>&lt;<span class="type">Record</span>&gt; records) {
+        <span class="kw">return</span> records.stream()
+            .map(<span class="kw">this</span>::applyAdjustment)
+            .collect(<span class="type">Collectors</span>.toList());
+    }
+
+    <span class="kw">private</span> <span class="type">Record</span> <span class="fn">applyAdjustment</span>(<span class="type">Record</span> record) {
+        <span class="kw">if</span> (record.getMode() == <span class="type">Mode</span>.MARKUP) {
+            <span class="kw">return</span> record.withValue(record.getValue() * <span class="num">1.1</span>);
+        }
+        <span class="kw">if</span> (record.getMode() == <span class="type">Mode</span>.DISCOUNT) {
+            <span class="kw">return</span> record.withValue(record.getValue() * <span class="num">0.9</span>);
+        }
+        <span class="kw">return</span> record;
+    }
+
+    <span class="kw">private double</span> <span class="fn">computeTotal</span>(<span class="type">List</span>&lt;<span class="type">Record</span>&gt; records) {
+        <span class="kw">return</span> records.stream()
+            .mapToDouble(<span class="type">Record</span>::getValue)
+            .sum();
+    }
+}</code></pre>
+
+<p>The method <code>process</code> now reads as a clear sequence of named steps: filter, adjust, total. No side effects — the input isn't mutated. No cryptic flags — <code>Mode.MARKUP</code> replaces <code>"M"</code>. No type casting — <code>Record</code> replaces <code>Map&lt;String, Object&gt;</code>. The intent is recovered.</p>
+
+<hr>
+
+<h3>General strategies for recovering lost intent</h3>
+
+<p>Lost Intent is fixed by treating the individual smells that caused it:</p>
+
+<div class="note"><strong>Mysterious names</strong> → Rename Method, Rename Variable, Rename Class</div>
+<div class="note"><strong>Blended steps</strong> → Extract Method (one method per step)</div>
+<div class="note"><strong>Side effects</strong> → Separate Commands from Queries (see Side Effect smell)</div>
+<div class="note"><strong>Complex conditionals</strong> → Decompose Conditional, Replace Conditional with Polymorphism</div>
+<div class="note"><strong>Ambiguous constructors</strong> → Replace Constructor with Creation Method (Factory Method)</div>
+<div class="note"><strong>Data hidden in generic structures</strong> (<code>Map&lt;String, Object&gt;</code>) → Replace with typed domain objects</div>
+
+<p>The common thread: make every name, every method boundary, and every class boundary serve as documentation of intent. When the code's purpose is visible in its structure, comments become optional and the intent is never lost.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+</body>
+</html>

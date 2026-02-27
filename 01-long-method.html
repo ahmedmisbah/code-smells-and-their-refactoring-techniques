@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Long Method — Code Smell</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0f2e;
+    color: #d4daf0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    margin-bottom: 0.3rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.6rem;
+  }
+
+  h2 {
+    color: #FFFFFF;
+    font-size: 1.5rem;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #1e2a5e;
+    padding-bottom: 0.4rem;
+  }
+
+  h3 {
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  h4 {
+    color: #FFFFFF;
+    font-size: 1.1rem;
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  p {
+    margin-bottom: 1rem;
+  }
+
+  .aka {
+    color: #9ba3c2;
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  strong {
+    color: #FFFFFF;
+  }
+
+  em {
+    color: #d4a0ff;
+    font-style: italic;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #1e2a5e;
+    margin: 2rem 0;
+  }
+
+  pre {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 6px;
+    padding: 1rem 1.2rem;
+    overflow-x: auto;
+    margin-bottom: 1.2rem;
+    font-size: 0.875rem;
+    line-height: 1.55;
+  }
+
+  code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+  }
+
+  pre code {
+    color: #d4daf0;
+  }
+
+  p code, li code {
+    background: #111842;
+    border: 1px solid #1e2a5e;
+    border-radius: 4px;
+    padding: 0.15em 0.4em;
+    color: #c77dff;
+  }
+
+  /* Syntax highlighting */
+  .kw { color: #c77dff; }       /* keywords */
+  .type { color: #6b9fff; }     /* types */
+  .str { color: #a8c8ff; }      /* strings */
+  .num { color: #6b9fff; }      /* numbers */
+  .cmt { color: #9ba3c2; font-style: italic; }  /* comments */
+  .fn { color: #d4a0ff; }       /* function/method names */
+  .ann { color: #e0b0ff; }      /* annotations */
+  .label { color: #FFFFFF; font-weight: bold; }  /* before/after labels */
+
+  .before-after {
+    color: #c77dff;
+    font-weight: bold;
+    font-size: 0.95rem;
+    margin-bottom: 0.4rem;
+    margin-top: 1.2rem;
+  }
+
+  .note {
+    background: #111842;
+    border-left: 4px solid #6b9fff;
+    padding: 0.8rem 1rem;
+    margin: 1.2rem 0;
+    border-radius: 0 6px 6px 0;
+    color: #9ba3c2;
+  }
+
+  .note strong { color: #6b9fff; }
+
+  .logo-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #1e2a5e;
+  }
+
+  .logo-header img {
+    max-width: 180px;
+    height: auto;
+  }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    color: #6b9fff;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .back-link:hover {
+    text-decoration: underline;
+  }
+
+  footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #1e2a5e;
+    text-align: center;
+    color: #7880a0;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+
+  footer img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 0.8rem;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="logo-header">
+  <img src="logo.jpg" alt="Tek Caffe Logo">
+</div>
+
+<a href="index.html" class="back-link">← Back to all Code Smells</a>
+
+<h1>Long Method</h1>
+<p class="aka"><strong>Also known as:</strong> Long Function (Fowler, 2nd ed.)</p>
+
+<hr>
+
+<h2>Description</h2>
+
+<p>A method that contains too many lines of code, typically doing more than one thing. There's no universal threshold, but most authors agree that once a method exceeds roughly 5–10 lines (debatable), it deserves scrutiny. Long methods tend to grow organically — it always feels easier to add a few lines to an existing method than to create a new one — until the method becomes a tangled, hard-to-follow narrative.</p>
+
+<hr>
+
+<h2>Example</h2>
+
+<pre><code><span class="kw">public</span> <span class="type">String</span> <span class="fn">generateInvoice</span>(<span class="type">Order</span> order) {
+    <span class="cmt">// Validate order</span>
+    <span class="kw">if</span> (order == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Order cannot be null"</span>);
+    <span class="kw">if</span> (order.getItems().isEmpty()) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Order has no items"</span>);
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        <span class="kw">if</span> (item.getQuantity() &lt;= <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid quantity"</span>);
+        <span class="kw">if</span> (item.getPrice() &lt; <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid price"</span>);
+    }
+
+    <span class="cmt">// Calculate subtotal</span>
+    <span class="kw">double</span> subtotal = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        <span class="kw">double</span> lineTotal = item.getPrice() * item.getQuantity();
+        <span class="kw">if</span> (item.getCategory().equals(<span class="str">"electronics"</span>)) {
+            lineTotal *= <span class="num">0.95</span>; <span class="cmt">// 5% discount on electronics</span>
+        } <span class="kw">else if</span> (item.getCategory().equals(<span class="str">"books"</span>)) {
+            lineTotal *= <span class="num">0.90</span>; <span class="cmt">// 10% discount on books</span>
+        }
+        subtotal += lineTotal;
+    }
+
+    <span class="cmt">// Calculate tax</span>
+    <span class="kw">double</span> tax;
+    <span class="kw">if</span> (order.getState().equals(<span class="str">"CA"</span>)) {
+        tax = subtotal * <span class="num">0.0975</span>;
+    } <span class="kw">else if</span> (order.getState().equals(<span class="str">"NY"</span>)) {
+        tax = subtotal * <span class="num">0.08875</span>;
+    } <span class="kw">else if</span> (order.getState().equals(<span class="str">"TX"</span>)) {
+        tax = subtotal * <span class="num">0.0625</span>;
+    } <span class="kw">else</span> {
+        tax = subtotal * <span class="num">0.07</span>;
+    }
+
+    <span class="cmt">// Calculate shipping</span>
+    <span class="kw">double</span> shipping;
+    <span class="kw">double</span> totalWeight = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        totalWeight += item.getWeight() * item.getQuantity();
+    }
+    <span class="kw">if</span> (totalWeight &lt; <span class="num">5</span>) {
+        shipping = <span class="num">5.99</span>;
+    } <span class="kw">else if</span> (totalWeight &lt; <span class="num">20</span>) {
+        shipping = <span class="num">12.99</span>;
+    } <span class="kw">else</span> {
+        shipping = <span class="num">24.99</span>;
+    }
+    <span class="kw">if</span> (subtotal &gt; <span class="num">100</span>) {
+        shipping = <span class="num">0</span>; <span class="cmt">// Free shipping over $100</span>
+    }
+
+    <span class="cmt">// Format invoice</span>
+    <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+    sb.append(<span class="str">"INVOICE\n"</span>);
+    sb.append(<span class="str">"Customer: "</span>).append(order.getCustomerName()).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"----------------------------\n"</span>);
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        sb.append(item.getName())
+          .append(<span class="str">" x"</span>).append(item.getQuantity())
+          .append(<span class="str">" @ $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, item.getPrice()))
+          .append(<span class="str">"\n"</span>);
+    }
+    sb.append(<span class="str">"----------------------------\n"</span>);
+    sb.append(<span class="str">"Subtotal: $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, subtotal)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"Tax:      $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, tax)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"Shipping: $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, shipping)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"TOTAL:    $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, subtotal + tax + shipping)).append(<span class="str">"\n"</span>);
+    <span class="kw">return</span> sb.toString();
+}</code></pre>
+
+<hr>
+
+<h2>What principle does it break?</h2>
+
+<p><strong>Single Responsibility Principle (SRP).</strong> The method above validates, calculates discounts, computes tax, determines shipping, and formats output — five distinct responsibilities in one place. This also violates the closely related idea of <strong>separation of concerns</strong>: each block operates at a different conceptual level, yet they're all stitched together sequentially. The result is code that is hard to read, hard to test in isolation, and hard to change without risking unrelated breakage. If the tax rules change, you're editing the same method that handles formatting. If you need the subtotal elsewhere, you can't reuse it — you have to duplicate the logic.</p>
+
+<hr>
+
+<h2>How to fix it</h2>
+
+<p>The primary refactoring is <strong>Extract Method</strong> (called <em>Extract Function</em> in Fowler's 2nd edition): identify each coherent chunk and pull it into its own well-named method.</p>
+
+<pre><code><span class="kw">public</span> <span class="type">String</span> <span class="fn">generateInvoice</span>(<span class="type">Order</span> order) {
+    validateOrder(order);
+    <span class="kw">double</span> subtotal = calculateSubtotal(order);
+    <span class="kw">double</span> tax = calculateTax(order, subtotal);
+    <span class="kw">double</span> shipping = calculateShipping(order, subtotal);
+    <span class="kw">return</span> formatInvoice(order, subtotal, tax, shipping);
+}
+
+<span class="kw">private void</span> <span class="fn">validateOrder</span>(<span class="type">Order</span> order) {
+    <span class="kw">if</span> (order == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Order cannot be null"</span>);
+    <span class="kw">if</span> (order.getItems().isEmpty()) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Order has no items"</span>);
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        <span class="kw">if</span> (item.getQuantity() &lt;= <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid quantity"</span>);
+        <span class="kw">if</span> (item.getPrice() &lt; <span class="num">0</span>) <span class="kw">throw new</span> <span class="type">IllegalArgumentException</span>(<span class="str">"Invalid price"</span>);
+    }
+}
+
+<span class="kw">private double</span> <span class="fn">calculateSubtotal</span>(<span class="type">Order</span> order) {
+    <span class="kw">double</span> subtotal = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        subtotal += getDiscountedPrice(item) * item.getQuantity();
+    }
+    <span class="kw">return</span> subtotal;
+}
+
+<span class="kw">private double</span> <span class="fn">getDiscountedPrice</span>(<span class="type">OrderItem</span> item) {
+    <span class="kw">if</span> (item.getCategory().equals(<span class="str">"electronics"</span>)) <span class="kw">return</span> item.getPrice() * <span class="num">0.95</span>;
+    <span class="kw">if</span> (item.getCategory().equals(<span class="str">"books"</span>)) <span class="kw">return</span> item.getPrice() * <span class="num">0.90</span>;
+    <span class="kw">return</span> item.getPrice();
+}
+
+<span class="kw">private double</span> <span class="fn">calculateTax</span>(<span class="type">Order</span> order, <span class="kw">double</span> subtotal) {
+    <span class="kw">double</span> rate = getTaxRate(order.getState());
+    <span class="kw">return</span> subtotal * rate;
+}
+
+<span class="kw">private double</span> <span class="fn">getTaxRate</span>(<span class="type">String</span> state) {
+    <span class="kw">switch</span> (state) {
+        <span class="kw">case</span> <span class="str">"CA"</span>: <span class="kw">return</span> <span class="num">0.0975</span>;
+        <span class="kw">case</span> <span class="str">"NY"</span>: <span class="kw">return</span> <span class="num">0.08875</span>;
+        <span class="kw">case</span> <span class="str">"TX"</span>: <span class="kw">return</span> <span class="num">0.0625</span>;
+        <span class="kw">default</span>:   <span class="kw">return</span> <span class="num">0.07</span>;
+    }
+}
+
+<span class="kw">private double</span> <span class="fn">calculateShipping</span>(<span class="type">Order</span> order, <span class="kw">double</span> subtotal) {
+    <span class="kw">if</span> (subtotal &gt; <span class="num">100</span>) <span class="kw">return</span> <span class="num">0</span>;
+    <span class="kw">double</span> totalWeight = order.getItems().stream()
+        .mapToDouble(i -&gt; i.getWeight() * i.getQuantity()).sum();
+    <span class="kw">if</span> (totalWeight &lt; <span class="num">5</span>)  <span class="kw">return</span> <span class="num">5.99</span>;
+    <span class="kw">if</span> (totalWeight &lt; <span class="num">20</span>) <span class="kw">return</span> <span class="num">12.99</span>;
+    <span class="kw">return</span> <span class="num">24.99</span>;
+}
+
+<span class="kw">private</span> <span class="type">String</span> <span class="fn">formatInvoice</span>(<span class="type">Order</span> order, <span class="kw">double</span> subtotal,
+                              <span class="kw">double</span> tax, <span class="kw">double</span> shipping) {
+    <span class="type">StringBuilder</span> sb = <span class="kw">new</span> <span class="type">StringBuilder</span>();
+    sb.append(<span class="str">"INVOICE\n"</span>);
+    sb.append(<span class="str">"Customer: "</span>).append(order.getCustomerName()).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"----------------------------\n"</span>);
+    <span class="kw">for</span> (<span class="type">OrderItem</span> item : order.getItems()) {
+        sb.append(item.getName())
+          .append(<span class="str">" x"</span>).append(item.getQuantity())
+          .append(<span class="str">" @ $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, item.getPrice()))
+          .append(<span class="str">"\n"</span>);
+    }
+    sb.append(<span class="str">"----------------------------\n"</span>);
+    sb.append(<span class="str">"Subtotal: $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, subtotal)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"Tax:      $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, tax)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"Shipping: $"</span>).append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, shipping)).append(<span class="str">"\n"</span>);
+    sb.append(<span class="str">"TOTAL:    $"</span>)
+       .append(<span class="type">String</span>.format(<span class="str">"%.2f"</span>, subtotal + tax + shipping)).append(<span class="str">"\n"</span>);
+    <span class="kw">return</span> sb.toString();
+}</code></pre>
+
+<p>Now <code>generateInvoice</code> reads like a high-level summary — you can understand what it does without wading through the details. Each extracted method can be tested, reused, and modified independently.</p>
+
+<h3>Supporting refactorings</h3>
+
+<p>When Extract Method alone isn't enough, these refactorings clear the way.</p>
+
+<hr>
+
+<h4>Replace Temp with Query</h4>
+
+<p>Local variables pin logic inside a method because extracted methods can't see them. The fix: replace the variable with a method call.</p>
+
+<p class="before-after">Before — <code>basePrice</code> blocks extraction of the discount logic:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">getPrice</span>(<span class="type">Order</span> order) {
+    <span class="kw">double</span> basePrice = order.getQuantity() * order.getItemPrice();
+    <span class="kw">double</span> discount;
+    <span class="kw">if</span> (basePrice &gt; <span class="num">1000</span>) {
+        discount = basePrice * <span class="num">0.10</span>;
+    } <span class="kw">else</span> {
+        discount = basePrice * <span class="num">0.05</span>;
+    }
+    <span class="kw">return</span> basePrice - discount;
+}</code></pre>
+
+<p class="before-after">After — <code>basePrice()</code> is now a query, so the discount logic extracts cleanly:</p>
+
+<pre><code><span class="kw">public double</span> <span class="fn">getPrice</span>(<span class="type">Order</span> order) {
+    <span class="kw">return</span> basePrice(order) - discount(order);
+}
+
+<span class="kw">private double</span> <span class="fn">basePrice</span>(<span class="type">Order</span> order) {
+    <span class="kw">return</span> order.getQuantity() * order.getItemPrice();
+}
+
+<span class="kw">private double</span> <span class="fn">discount</span>(<span class="type">Order</span> order) {
+    <span class="kw">if</span> (basePrice(order) &gt; <span class="num">1000</span>) {
+        <span class="kw">return</span> basePrice(order) * <span class="num">0.10</span>;
+    }
+    <span class="kw">return</span> basePrice(order) * <span class="num">0.05</span>;
+}</code></pre>
+
+<hr>
+
+<h4>Introduce Parameter Object</h4>
+
+<p>When several parameters always travel together, they're begging to become an object. This shrinks parameter lists and gives the concept a name.</p>
+
+<p class="before-after">Before — date range parameters clutter every method signature:</p>
+
+<pre><code><span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">Event</span>&gt; <span class="fn">getEvents</span>(<span class="type">Date</span> start, <span class="type">Date</span> end, <span class="type">String</span> timezone) {
+    <span class="cmt">// ...</span>
+}
+
+<span class="kw">public double</span> <span class="fn">getRevenue</span>(<span class="type">Date</span> start, <span class="type">Date</span> end, <span class="type">String</span> timezone) {
+    <span class="cmt">// ...</span>
+}
+
+<span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">User</span>&gt; <span class="fn">getActiveUsers</span>(<span class="type">Date</span> start, <span class="type">Date</span> end, <span class="type">String</span> timezone) {
+    <span class="cmt">// ...</span>
+}</code></pre>
+
+<p class="before-after">After — a <code>DateRange</code> object replaces the clump:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">DateRange</span> {
+    <span class="kw">private final</span> <span class="type">Date</span> start;
+    <span class="kw">private final</span> <span class="type">Date</span> end;
+    <span class="kw">private final</span> <span class="type">String</span> timezone;
+
+    <span class="kw">public</span> <span class="fn">DateRange</span>(<span class="type">Date</span> start, <span class="type">Date</span> end, <span class="type">String</span> timezone) {
+        <span class="kw">this</span>.start = start;
+        <span class="kw">this</span>.end = end;
+        <span class="kw">this</span>.timezone = timezone;
+    }
+
+    <span class="kw">public boolean</span> <span class="fn">contains</span>(<span class="type">Date</span> date) {
+        <span class="kw">return</span> !date.before(start) &amp;&amp; !date.after(end);
+    }
+
+    <span class="cmt">// getters...</span>
+}
+
+<span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">Event</span>&gt; <span class="fn">getEvents</span>(<span class="type">DateRange</span> range) { <span class="cmt">/* ... */</span> }
+<span class="kw">public double</span> <span class="fn">getRevenue</span>(<span class="type">DateRange</span> range) { <span class="cmt">/* ... */</span> }
+<span class="kw">public</span> <span class="type">List</span>&lt;<span class="type">User</span>&gt; <span class="fn">getActiveUsers</span>(<span class="type">DateRange</span> range) { <span class="cmt">/* ... */</span> }</code></pre>
+
+<p>Notice how behavior naturally migrates into the new class (<code>contains</code>). This is a common and valuable side-effect: what starts as a data carrier often grows into a proper object.</p>
+
+<hr>
+
+<h4>Preserve Whole Object</h4>
+
+<p>Instead of pulling several values out of an object just to pass them individually, pass the object itself.</p>
+
+<p class="before-after">Before — three values are extracted only to be passed along:</p>
+
+<pre><code><span class="kw">public void</span> <span class="fn">recordWeather</span>(<span class="type">WeatherStation</span> station) {
+    <span class="kw">double</span> temp = station.getTemperature();
+    <span class="kw">double</span> humidity = station.getHumidity();
+    <span class="kw">double</span> windSpeed = station.getWindSpeed();
+    logReading(temp, humidity, windSpeed);
+}
+
+<span class="kw">private void</span> <span class="fn">logReading</span>(<span class="kw">double</span> temp, <span class="kw">double</span> humidity, <span class="kw">double</span> windSpeed) {
+    <span class="kw">if</span> (temp &gt; <span class="num">100</span> &amp;&amp; humidity &lt; <span class="num">20</span> &amp;&amp; windSpeed &gt; <span class="num">30</span>) {
+        triggerFireWarning();
+    }
+    <span class="cmt">// ...</span>
+}</code></pre>
+
+<p class="before-after">After — pass the whole object:</p>
+
+<pre><code><span class="kw">public void</span> <span class="fn">recordWeather</span>(<span class="type">WeatherStation</span> station) {
+    logReading(station);
+}
+
+<span class="kw">private void</span> <span class="fn">logReading</span>(<span class="type">WeatherStation</span> station) {
+    <span class="kw">if</span> (station.getTemperature() &gt; <span class="num">100</span>
+            &amp;&amp; station.getHumidity() &lt; <span class="num">20</span>
+            &amp;&amp; station.getWindSpeed() &gt; <span class="num">30</span>) {
+        triggerFireWarning();
+    }
+    <span class="cmt">// ...</span>
+}</code></pre>
+
+<p>The parameter list shrinks and the code is resilient to change — if the warning logic later needs barometric pressure, you don't have to thread a new parameter through every caller.</p>
+
+<hr>
+
+<h4>Replace Method with Method Object</h4>
+
+<p>When a method is so loaded with local variables and intertwined logic that extraction feels impossible, promote the entire method into its own class. The locals become fields, and you're free to decompose at will.</p>
+
+<p class="before-after">Before — a pricing method with deeply entangled locals:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Order</span> {
+    <span class="kw">public double</span> <span class="fn">calculateTotal</span>(<span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items, <span class="type">Customer</span> customer) {
+        <span class="kw">double</span> baseTotal = <span class="num">0</span>;
+        <span class="kw">double</span> volumeDiscount = <span class="num">0</span>;
+        <span class="kw">double</span> loyaltyCredit = <span class="num">0</span>;
+        <span class="kw">double</span> taxableAmount = <span class="num">0</span>;
+        <span class="kw">double</span> shippingSurcharge = <span class="num">0</span>;
+
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : items) {
+            <span class="kw">double</span> linePrice = item.getPrice() * item.getQuantity();
+            <span class="kw">if</span> (item.getQuantity() &gt; <span class="num">100</span>) {
+                volumeDiscount += linePrice * <span class="num">0.15</span>;
+            } <span class="kw">else if</span> (item.getQuantity() &gt; <span class="num">50</span>) {
+                volumeDiscount += linePrice * <span class="num">0.10</span>;
+            }
+            <span class="kw">if</span> (item.isTaxable()) {
+                taxableAmount += linePrice;
+            }
+            <span class="kw">if</span> (item.isOversized()) {
+                shippingSurcharge += item.getWeight() * <span class="num">0.50</span>;
+            }
+            baseTotal += linePrice;
+        }
+
+        <span class="kw">if</span> (customer.getLoyaltyYears() &gt; <span class="num">5</span>) {
+            loyaltyCredit = baseTotal * <span class="num">0.05</span>;
+        } <span class="kw">else if</span> (customer.getLoyaltyYears() &gt; <span class="num">2</span>) {
+            loyaltyCredit = baseTotal * <span class="num">0.02</span>;
+        }
+
+        <span class="kw">double</span> tax = taxableAmount * customer.getTaxRate();
+        <span class="kw">return</span> baseTotal - volumeDiscount - loyaltyCredit + tax + shippingSurcharge;
+    }
+}</code></pre>
+
+<p class="before-after">After — the method becomes a class, locals become fields, and decomposition is straightforward:</p>
+
+<pre><code><span class="kw">public class</span> <span class="type">Order</span> {
+    <span class="kw">public double</span> <span class="fn">calculateTotal</span>(<span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items, <span class="type">Customer</span> customer) {
+        <span class="kw">return new</span> <span class="type">OrderTotalCalculator</span>(items, customer).compute();
+    }
+}
+
+<span class="kw">public class</span> <span class="type">OrderTotalCalculator</span> {
+    <span class="kw">private final</span> <span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items;
+    <span class="kw">private final</span> <span class="type">Customer</span> customer;
+    <span class="kw">private double</span> baseTotal;
+    <span class="kw">private double</span> volumeDiscount;
+    <span class="kw">private double</span> loyaltyCredit;
+    <span class="kw">private double</span> taxableAmount;
+    <span class="kw">private double</span> shippingSurcharge;
+
+    <span class="kw">public</span> <span class="fn">OrderTotalCalculator</span>(<span class="type">List</span>&lt;<span class="type">OrderItem</span>&gt; items, <span class="type">Customer</span> customer) {
+        <span class="kw">this</span>.items = items;
+        <span class="kw">this</span>.customer = customer;
+    }
+
+    <span class="kw">public double</span> <span class="fn">compute</span>() {
+        calculateLineItems();
+        calculateLoyaltyCredit();
+        <span class="kw">double</span> tax = calculateTax();
+        <span class="kw">return</span> baseTotal - volumeDiscount - loyaltyCredit + tax + shippingSurcharge;
+    }
+
+    <span class="kw">private void</span> <span class="fn">calculateLineItems</span>() {
+        <span class="kw">for</span> (<span class="type">OrderItem</span> item : items) {
+            <span class="kw">double</span> linePrice = item.getPrice() * item.getQuantity();
+            baseTotal += linePrice;
+            applyVolumeDiscount(item, linePrice);
+            trackTaxable(item, linePrice);
+            trackShipping(item);
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">applyVolumeDiscount</span>(<span class="type">OrderItem</span> item, <span class="kw">double</span> linePrice) {
+        <span class="kw">if</span> (item.getQuantity() &gt; <span class="num">100</span>) {
+            volumeDiscount += linePrice * <span class="num">0.15</span>;
+        } <span class="kw">else if</span> (item.getQuantity() &gt; <span class="num">50</span>) {
+            volumeDiscount += linePrice * <span class="num">0.10</span>;
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">trackTaxable</span>(<span class="type">OrderItem</span> item, <span class="kw">double</span> linePrice) {
+        <span class="kw">if</span> (item.isTaxable()) {
+            taxableAmount += linePrice;
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">trackShipping</span>(<span class="type">OrderItem</span> item) {
+        <span class="kw">if</span> (item.isOversized()) {
+            shippingSurcharge += item.getWeight() * <span class="num">0.50</span>;
+        }
+    }
+
+    <span class="kw">private void</span> <span class="fn">calculateLoyaltyCredit</span>() {
+        <span class="kw">if</span> (customer.getLoyaltyYears() &gt; <span class="num">5</span>) {
+            loyaltyCredit = baseTotal * <span class="num">0.05</span>;
+        } <span class="kw">else if</span> (customer.getLoyaltyYears() &gt; <span class="num">2</span>) {
+            loyaltyCredit = baseTotal * <span class="num">0.02</span>;
+        }
+    }
+
+    <span class="kw">private double</span> <span class="fn">calculateTax</span>() {
+        <span class="kw">return</span> taxableAmount * customer.getTaxRate();
+    }
+}</code></pre>
+
+<p>The locals that made extraction impossible are now fields shared across small, focused methods. Each piece can be understood, tested, and changed independently.</p>
+
+<hr>
+
+<p>If the long method's core problem is a large <code>switch</code> or cascading <code>if/else</code> dispatching different behaviors, a <strong>Strategy pattern</strong> may be warranted — but that overlaps with the <em>Switch Statements</em> smell, which we'll cover separately.</p>
+
+<footer>
+  <img src="logo.jpg" alt="Tek Caffe Logo"><br>
+  The course materials and recordings are the intellectual property and copyright of Tek Caffe and Ahmed Mahmoud Misbah. Distribution, sharing, downloading for redistribution, or any unauthorized use of these materials and recordings is strictly prohibited and may result in legal action.
+</footer>
+
+</body>
+</html>
