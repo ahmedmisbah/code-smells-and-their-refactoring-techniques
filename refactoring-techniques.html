@@ -92,9 +92,7 @@
   <button class="filter-btn" data-cat="Change Preventers" onclick="toggleCat('Change Preventers', this)">Change Preventers</button>
   <button class="filter-btn" data-cat="Couplers" onclick="toggleCat('Couplers', this)">Couplers</button>
   <button class="filter-btn" data-cat="Dispensables" onclick="toggleCat('Dispensables', this)">Dispensables</button>
-  <button class="filter-btn" data-cat="Naming" onclick="toggleCat('Naming', this)">Naming</button>
   <button class="filter-btn" data-cat="OO Abusers" onclick="toggleCat('OO Abusers', this)">OO Abusers</button>
-  <button class="filter-btn" data-cat="Side Effect" onclick="toggleCat('Side Effect', this)">Side Effect</button>
     </div>
   </div>
 </div>
@@ -2975,9 +2973,9 @@ function applyFilters() {
   let shown = 0;
   cards.forEach(card => {
     const hasSmells = card.dataset.hasSmells;
-    const cardCats = card.dataset.categories.split(' ');
+    const cardCats = ' ' + card.dataset.categories + ' ';
     let passMapping = mappingFilter === 'all' || mappingFilter === hasSmells;
-    let passCat = activeCats.size === 0 || cardCats.some(c => activeCats.has(c));
+    let passCat = activeCats.size === 0 || [...activeCats].some(c => cardCats.includes(' ' + c + ' '));
     if (activeCats.size > 0 && hasSmells === 'no') passCat = false;
     if (passMapping && passCat) { card.style.display = ''; shown++; }
     else { card.style.display = 'none'; }
